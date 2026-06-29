@@ -1,10 +1,38 @@
-# Flow Field — Generative Art Playground
+# Capabilities Showcase
 
-An interactive, real-time generative-art toy built as a **single self-contained HTML file**.
-No build step, no dependencies, no network — just open `index.html` in any modern browser.
+A dependency-free, single-file gallery of live interactive demos — generative art, fractals,
+flocking, real-time audio synthesis, gravity simulation and a 3D starfield — all written from
+scratch in plain HTML, Canvas and JavaScript. No frameworks, no build step, no network.
 
 ![status](https://img.shields.io/badge/dependencies-none-brightgreen)
 ![status](https://img.shields.io/badge/build-not%20required-blue)
+
+## Start here
+
+Open **[`showcase.html`](showcase.html)** — the landing page that ties everything together:
+an animated hero, a "what I can do" capabilities section, and a gallery of six interactive
+demos that start when scrolled into view and pause when off-screen.
+
+| Demo | Technique |
+|------|-----------|
+| **Flow Field** | Perlin-noise vector field (the full toy lives in `index.html`) |
+| **Mandelbrot Explorer** | Escape-time fractal, click to zoom, smooth iteration coloring |
+| **Boids Flocking** | Separation / alignment / cohesion steering behaviors |
+| **Synth & Visualizer** | Web Audio oscillators + live FFT spectrum |
+| **N-Body Gravity** | Inverse-square attraction with orbital trails |
+| **Starfield Warp** | Hand-rolled 3D perspective projection |
+
+```bash
+python3 -m http.server 8000   # then visit http://localhost:8000/showcase.html
+```
+
+---
+
+# Flow Field — Generative Art Playground
+
+The original piece, still available standalone as `index.html`. An interactive, real-time
+generative-art toy built as a **single self-contained HTML file**.
+No build step, no dependencies, no network — just open `index.html` in any modern browser.
 
 ## What it does
 
