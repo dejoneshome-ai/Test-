@@ -11,9 +11,20 @@
   ============================================================
   A single self-contained web page. Everything — the layout,
   the colours, and the logic — lives in this one file.
-  No internet connection is needed once it's loaded.
+  No internet connection is needed once it's loaded (except
+  that jsPDF is loaded from a CDN the very first time —
+  after that it may be cached by the browser).
   ============================================================
 -->
+
+<!--
+  jsPDF — the PDF generation library.
+  "UMD" means it works in a plain web page without any build tools.
+  autoTable is a plugin that draws the neat line-items grid.
+  Both run 100% in the browser; nothing is sent to a server.
+-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 
 <style>
 /* ============================================================
@@ -591,7 +602,7 @@ td input:focus {
       The PDF button is a placeholder for now.
       We'll wire it up in the next step.
     -->
-    <button class="btn btn-secondary" id="pdfBtn" onclick="alert('PDF coming soon! This will be wired up in the next step.')">
+    <button class="btn btn-secondary" id="pdfBtn" onclick="generatePDF()">
       &#128196; Download PDF
     </button>
   </div>
@@ -910,6 +921,356 @@ BIZ_FIELDS.forEach(id => {
   document.getElementById(id).addEventListener("blur", saveBusinessDetails);
   // "blur" fires when the user leaves the field (clicks or tabs away)
 });
+
+
+/*
+  ============================================================
+  PART 7 — PDF GENERATION
+  ============================================================
+  When the user clicks "Download PDF" we:
+    1. Read all the current form values
+    2. Create a blank A4 PDF document using jsPDF
+    3. Draw the header, logo, business details, customer block,
+       line-items table, totals, notes, and footer
+    4. Trigger a browser download
+
+  jsPDF uses millimetres (mm) for positioning.
+  Think of the page as a coordinate grid:
+    - x=0 is the left edge, x=210 is the right edge (A4 width)
+    - y=0 is the top edge, y=297 is the bottom edge (A4 height)
+  We place every element by specifying its x, y position.
+  ============================================================
+*/
+
+function generatePDF() {
+  // ---- Guard: make sure jsPDF loaded from the CDN ----
+  if (!window.jspdf) {
+    alert("The PDF library hasn't loaded yet. Please check your internet connection and try again.");
+    return;
+  }
+
+  // ---- Give the button a "working" state so the user knows something is happening ----
+  const btn = document.getElementById("pdfBtn");
+  const originalText = btn.innerHTML;
+  btn.innerHTML = "&#8987; Generating…";
+  btn.disabled = true;
+
+  // We use setTimeout(0) to let the browser repaint the button text
+  // BEFORE we start the (potentially slow) PDF work
+  setTimeout(function () {
+    try {
+      buildAndDownloadPDF();
+    } finally {
+      // Always restore the button, even if something goes wrong
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+    }
+  }, 0);
+}
+
+function buildAndDownloadPDF() {
+
+  // ====================================================
+  // STEP A — Collect all form values
+  // ====================================================
+  const mode       = document.querySelector('input[name="docMode"]:checked').value; // "Quote" or "Invoice"
+  const bizName    = document.getElementById("bizName").value.trim()    || "Your Business";
+  const bizContact = document.getElementById("bizContact").value.trim();
+  const bizPhone   = document.getElementById("bizPhone").value.trim();
+  const bizEmail   = document.getElementById("bizEmail").value.trim();
+  const bizAddress = document.getElementById("bizAddress").value.trim();
+  const custName   = document.getElementById("custName").value.trim()   || "Customer";
+  const custAddr   = document.getElementById("custAddress").value.trim();
+  const docNumber  = document.getElementById("docNumber").value.trim()  || "001";
+  const docDate    = document.getElementById("docDate").value;
+  const notes      = document.getElementById("notes").value.trim();
+  const vatChecked = document.getElementById("vatCheck").checked;
+  const vatRate    = parseFloat(document.getElementById("vatRate").value) || 0;
+
+  // Computed totals (reuse the same maths as the live display)
+  const subtotal   = items.reduce((sum, item) => sum + calcLineTotal(item), 0);
+  const vatAmount  = vatChecked ? subtotal * (vatRate / 100) : 0;
+  const grandTotal = subtotal + vatAmount;
+
+  // Format date as "29 June 2026" (much more readable than "2026-06-29")
+  let niceDate = docDate;
+  if (docDate) {
+    try {
+      niceDate = new Date(docDate + "T12:00:00").toLocaleDateString("en-GB", {
+        day: "numeric", month: "long", year: "numeric"
+      });
+    } catch (_) { /* leave as-is if Date parsing fails */ }
+  }
+
+
+  // ====================================================
+  // STEP B — Create the PDF document
+  // ====================================================
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+  // Page measurements
+  const PAGE_W   = 210; // A4 width in mm
+  const PAGE_H   = 297; // A4 height in mm
+  const MARGIN   = 18;  // left and right margins
+  const CONTENT_W = PAGE_W - MARGIN * 2; // 174mm of usable width
+
+  // Our colour palette in RGB triplets (same blues as the website)
+  const BRAND = [26, 86, 219];    // the main blue
+  const DARK  = [30, 41, 59];     // near-black text
+  const MUTED = [100, 116, 139];  // grey labels
+  const WHITE = [255, 255, 255];
+  const LIGHT = [248, 250, 252];  // very light grey for table alternating rows
+  const BORDER = [226, 232, 240]; // light grey lines
+
+
+  // ====================================================
+  // STEP C — Header band (the coloured top strip)
+  // ====================================================
+  // setFillColor sets the paint colour for filled shapes
+  // rect(x, y, width, height, "F") draws a filled rectangle
+  doc.setFillColor(...BRAND);
+  doc.rect(0, 0, PAGE_W, 46, "F");
+
+  // "QUOTE" or "INVOICE" — big bold text on the RIGHT of the header
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(26);
+  doc.setTextColor(...WHITE);
+  // align:"right" means the given x is the RIGHT edge of the text
+  doc.text(mode.toUpperCase(), PAGE_W - MARGIN, 20, { align: "right" });
+
+  // Document number and date, smaller, below the big heading
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(`${mode} No:  ${docNumber}`, PAGE_W - MARGIN, 29, { align: "right" });
+  doc.text(`Date:  ${niceDate}`,        PAGE_W - MARGIN, 36, { align: "right" });
+
+
+  // ====================================================
+  // STEP D — Logo (top-left of header, if one was uploaded)
+  // ====================================================
+  // The logo is stored as a "data URL" — a very long string.
+  // jsPDF's addImage() understands these directly.
+
+  let textStartX = MARGIN; // we'll push business name right if there's a logo
+
+  if (logoDataUrl) {
+    try {
+      // Work out whether it's a PNG or JPEG from the start of the data URL
+      const imgType = logoDataUrl.startsWith("data:image/png") ? "PNG" : "JPEG";
+
+      // We need the natural dimensions to scale it proportionally
+      // Use a temporary <img> element to get those dimensions
+      const tmpImg = new Image();
+      tmpImg.src   = logoDataUrl;
+
+      // Max logo area: 32mm wide, 26mm tall — scale to fit within that box
+      const maxW = 32, maxH = 26;
+      const ratio = Math.min(maxW / (tmpImg.naturalWidth || maxW),
+                             maxH / (tmpImg.naturalHeight || maxH));
+      const drawW = (tmpImg.naturalWidth  || maxW) * ratio;
+      const drawH = (tmpImg.naturalHeight || maxH) * ratio;
+
+      // Centre it vertically in the header band
+      const logoY = (46 - drawH) / 2;
+      doc.addImage(logoDataUrl, imgType, MARGIN, logoY, drawW, drawH, "", "FAST");
+      textStartX = MARGIN + drawW + 5; // business text starts to the right of logo
+    } catch (e) {
+      // If anything goes wrong with the logo, skip it silently
+      console.warn("Could not embed logo in PDF:", e);
+    }
+  }
+
+
+  // ====================================================
+  // STEP E — Business details (left side of header)
+  // ====================================================
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.setTextColor(...WHITE);
+  doc.text(bizName, textStartX, 17);
+
+  // Remaining business lines (contact, phone, email, address) — filter out blanks
+  const bizLines = [bizContact, bizPhone, bizEmail, bizAddress].filter(Boolean);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+
+  let bizLineY = 24;
+  bizLines.forEach(line => {
+    // Make sure these lines don't overlap with the right-side doc number
+    // by capping them at 100mm wide
+    const wrapped = doc.splitTextToSize(line, 100);
+    doc.text(wrapped[0], textStartX, bizLineY); // only first line to keep header tidy
+    bizLineY += 5.5;
+  });
+
+
+  // ====================================================
+  // STEP F — "Prepared for" customer block
+  // ====================================================
+  let y = 56; // start below the header band, with a small gap
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(...MUTED);
+  doc.text("PREPARED FOR", MARGIN, y);
+
+  y += 5.5;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.setTextColor(...DARK);
+  doc.text(custName, MARGIN, y);
+
+  if (custAddr) {
+    y += 5;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    // splitTextToSize wraps a long string to fit within a given mm width
+    const addrLines = doc.splitTextToSize(custAddr, 95);
+    doc.text(addrLines, MARGIN, y);
+    y += addrLines.length * 5;
+  }
+
+  y += 9; // breathing room before the table
+
+
+  // ====================================================
+  // STEP G — Line items table
+  // ====================================================
+  // Filter out rows where the user left everything blank
+  const tableRows = items
+    .filter(item => item.desc.trim() || parseFloat(item.rate) > 0)
+    .map(item => [
+      item.desc || "",
+      String(parseFloat(item.qty) || 0),
+      "£" + Number(parseFloat(item.rate) || 0).toLocaleString("en-GB", {
+        minimumFractionDigits: 2, maximumFractionDigits: 2
+      }),
+      formatCurrency(calcLineTotal(item)),
+    ]);
+
+  if (tableRows.length === 0) {
+    tableRows.push(["(no items entered)", "", "", "£0.00"]);
+  }
+
+  // autoTable draws the grid — it handles column widths, alternating row colours, etc.
+  doc.autoTable({
+    startY: y,
+    head: [["Description", "Qty", "Unit Price", "Total"]],
+    body: tableRows,
+    margin: { left: MARGIN, right: MARGIN },
+    tableWidth: CONTENT_W,
+    styles: {
+      fontSize: 10,
+      cellPadding: { top: 4, right: 5, bottom: 4, left: 5 },
+      textColor: DARK,
+      lineColor: BORDER,
+      lineWidth: 0.25,
+    },
+    headStyles: {
+      fillColor: BRAND,
+      textColor: WHITE,
+      fontStyle: "bold",
+      fontSize: 10,
+      cellPadding: { top: 5, right: 5, bottom: 5, left: 5 },
+    },
+    alternateRowStyles: {
+      fillColor: LIGHT,
+    },
+    columnStyles: {
+      0: { cellWidth: "auto" },                                  // description
+      1: { cellWidth: 18, halign: "center" },                    // qty
+      2: { cellWidth: 30, halign: "right" },                     // unit price
+      3: { cellWidth: 30, halign: "right", fontStyle: "bold" },  // line total
+    },
+  });
+
+
+  // ====================================================
+  // STEP H — Totals block (right-aligned, below the table)
+  // ====================================================
+  // doc.lastAutoTable.finalY tells us the y coordinate where the table ended
+  let ty = doc.lastAutoTable.finalY + 10;
+
+  const TOTALS_X = PAGE_W - MARGIN - 72; // left edge of the totals box
+  const TOTALS_W = 72;                   // width of the totals box
+
+  // Draw a light-grey rounded box behind the totals for visual grouping
+  const boxRows  = vatChecked ? 3 : 2;
+  const boxH     = boxRows * 9 + (vatChecked ? 5 : 0) + 10;
+  doc.setFillColor(...LIGHT);
+  doc.roundedRect(TOTALS_X - 5, ty - 6, TOTALS_W + 10, boxH, 3, 3, "F");
+
+  // Helper: draw one labelled row in the totals block
+  function drawTotalsRow(label, value, bold, large) {
+    doc.setFont("helvetica", bold ? "bold" : "normal");
+    doc.setFontSize(large ? 12 : 10);
+    doc.setTextColor(...MUTED);
+    doc.text(label, TOTALS_X, ty);
+    doc.setTextColor(...DARK);
+    doc.text(value, TOTALS_X + TOTALS_W, ty, { align: "right" });
+    ty += large ? 13 : 9;
+  }
+
+  drawTotalsRow("Subtotal", formatCurrency(subtotal), false, false);
+
+  if (vatChecked) {
+    drawTotalsRow(`VAT (${vatRate}%)`, formatCurrency(vatAmount), false, false);
+    // Thin divider line between VAT and grand total
+    ty += 2;
+    doc.setDrawColor(...BORDER);
+    doc.setLineWidth(0.5);
+    doc.line(TOTALS_X, ty - 4, TOTALS_X + TOTALS_W, ty - 4);
+    ty += 1;
+  }
+
+  drawTotalsRow(`${mode} Total`, formatCurrency(grandTotal), true, true);
+
+
+  // ====================================================
+  // STEP I — Notes / Terms
+  // ====================================================
+  if (notes) {
+    ty += 8;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(...MUTED);
+    doc.text("NOTES & PAYMENT TERMS", MARGIN, ty);
+
+    ty += 5;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...DARK);
+
+    // splitTextToSize wraps the notes text to fit the full content width
+    const noteLines = doc.splitTextToSize(notes, CONTENT_W);
+    doc.text(noteLines, MARGIN, ty);
+    ty += noteLines.length * 4.8;
+  }
+
+
+  // ====================================================
+  // STEP J — Footer
+  // ====================================================
+  // A thin brand-coloured line near the bottom, with a small thank-you message
+  doc.setDrawColor(...BRAND);
+  doc.setLineWidth(0.7);
+  doc.line(MARGIN, PAGE_H - 18, PAGE_W - MARGIN, PAGE_H - 18);
+
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(9);
+  doc.setTextColor(...MUTED);
+  doc.text("Thank you for your business.", PAGE_W / 2, PAGE_H - 11, { align: "center" });
+
+
+  // ====================================================
+  // STEP K — Download the PDF
+  // ====================================================
+  // Build a safe filename — strip characters that aren't allowed in filenames
+  const safeNum = docNumber.replace(/[^a-zA-Z0-9\-_]/g, "") || "001";
+  doc.save(`${mode}-${safeNum}.pdf`);
+}
 
 </script>
 </body>
