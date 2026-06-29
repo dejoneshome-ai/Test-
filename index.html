@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Flow Field — Generative Art Playground</title>
+<style>
+  :root {
+    --bg: #07080d;
+    --panel: rgba(18, 20, 32, 0.72);
+    --border: rgba(255, 255, 255, 0.08);
+    --text: #e7e9f3;
+    --muted: #9aa0b4;
+    --accent: #7c9cff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  canvas { display: block; position: fixed; inset: 0; }
+
+  .panel {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    width: 280px;
+    padding: 20px;
+    background: var(--panel);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+    z-index: 10;
+    transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease;
+  }
+  .panel.hidden { transform: translateX(-340px); opacity: 0; pointer-events: none; }
+
+  .title { font-size: 17px; font-weight: 650; letter-spacing: 0.2px; }
+  .subtitle { font-size: 12px; color: var(--muted); margin-top: 3px; margin-bottom: 18px; }
+
+  .control { margin-bottom: 16px; }
+  .control label {
+    display: flex; justify-content: space-between;
+    font-size: 12px; color: var(--muted); margin-bottom: 7px;
+  }
+  .control label b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 4px; border-radius: 4px;
+    background: rgba(255, 255, 255, 0.12); outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 15px; height: 15px; border-radius: 50%;
+    background: var(--accent); cursor: pointer;
+    box-shadow: 0 0 0 4px rgba(124, 156, 255, 0.18);
+    transition: transform 0.12s ease;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.18); }
+  input[type="range"]::-moz-range-thumb {
+    width: 15px; height: 15px; border: none; border-radius: 50%;
+    background: var(--accent); cursor: pointer;
+  }
+
+  .palettes { display: flex; gap: 8px; margin-top: 4px; }
+  .swatch {
+    flex: 1; height: 30px; border-radius: 8px; cursor: pointer;
+    border: 2px solid transparent; transition: transform 0.15s ease, border-color 0.15s ease;
+  }
+  .swatch:hover { transform: translateY(-2px); }
+  .swatch.active { border-color: #fff; }
+
+  .row { display: flex; gap: 10px; margin-top: 6px; }
+  button {
+    flex: 1; padding: 9px 12px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border);
+    color: var(--text); border-radius: 10px;
+    font-size: 12.5px; font-weight: 550; cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+  button:hover { background: rgba(255, 255, 255, 0.12); }
+  button:active { transform: scale(0.97); }
+  button.primary { background: var(--accent); border-color: transparent; color: #0a0c16; }
+  button.primary:hover { background: #93acff; }
+
+  .hint {
+    position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+    font-size: 12px; color: var(--muted);
+    background: var(--panel); padding: 8px 16px; border-radius: 999px;
+    border: 1px solid var(--border); backdrop-filter: blur(12px);
+    z-index: 10; white-space: nowrap;
+  }
+  .hint b { color: var(--text); font-weight: 600; }
+
+  .toggle {
+    position: fixed; top: 20px; left: 20px; z-index: 9;
+    width: 42px; height: 42px; border-radius: 12px;
+    background: var(--panel); border: 1px solid var(--border);
+    backdrop-filter: blur(12px); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.35s ease;
+  }
+  .toggle.show { opacity: 1; pointer-events: auto; }
+  .toggle svg { width: 20px; height: 20px; stroke: var(--text); }
+
+  .stats {
+    position: fixed; top: 20px; right: 20px; z-index: 10;
+    font-size: 11px; color: var(--muted); text-align: right;
+    font-variant-numeric: tabular-nums; line-height: 1.7;
+    background: var(--panel); padding: 10px 14px; border-radius: 12px;
+    border: 1px solid var(--border); backdrop-filter: blur(12px);
+  }
+  .stats b { color: var(--text); font-weight: 600; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="panel" id="panel">
+  <div class="title">Flow Field</div>
+  <div class="subtitle">A generative particle playground</div>
+
+  <div class="control">
+    <label>Particles <b id="vCount">2200</b></label>
+    <input type="range" id="count" min="200" max="6000" step="100" value="2200" />
+  </div>
+  <div class="control">
+    <label>Flow scale <b id="vScale">0.0020</b></label>
+    <input type="range" id="scale" min="5" max="60" step="1" value="20" />
+  </div>
+  <div class="control">
+    <label>Speed <b id="vSpeed">1.4</b></label>
+    <input type="range" id="speed" min="2" max="50" step="1" value="14" />
+  </div>
+  <div class="control">
+    <label>Trail length <b id="vTrail">0.94</b></label>
+    <input type="range" id="trail" min="70" max="99" step="1" value="94" />
+  </div>
+  <div class="control">
+    <label>Curl <b id="vCurl">2.6</b></label>
+    <input type="range" id="curl" min="5" max="60" step="1" value="26" />
+  </div>
+
+  <div class="control">
+    <label>Palette</label>
+    <div class="palettes" id="palettes"></div>
+  </div>
+
+  <div class="row">
+    <button id="pauseBtn">Pause</button>
+    <button id="clearBtn">Clear</button>
+  </div>
+  <div class="row">
+    <button class="primary" id="saveBtn">Save PNG</button>
+  </div>
+</div>
+
+<div class="toggle" id="toggle" title="Show controls">
+  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+    <line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/>
+  </svg>
+</div>
+
+<div class="stats" id="stats"><b id="fps">60</b> fps<br><span id="pcount">2200</span> particles</div>
+
+<div class="hint">Move your mouse to <b>push</b> the flow · <b>Click</b> to attract · <b>H</b> to hide panel · <b>Space</b> to pause</div>
+
+<script>
+"use strict";
+
+/* ---------------------------------------------------------------------------
+   Perlin noise (classic Ken Perlin improved noise, 2D slice of 3D).
+   Self-contained so the whole piece is a single dependency-free file.
+--------------------------------------------------------------------------- */
+const Perlin = (() => {
+  const p = new Uint8Array(512);
+  const perm = [...Array(256).keys()];
+  // deterministic-ish shuffle seeded by time for variety each load
+  let seed = (Date.now() % 2147483647) || 1;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 255; i > 0; i--) {
+    const j = (rnd() * (i + 1)) | 0;
+    [perm[i], perm[j]] = [perm[j], perm[i]];
+  }
+  for (let i = 0; i < 512; i++) p[i] = perm[i & 255];
+
+  const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
+  const lerp = (a, b, t) => a + t * (b - a);
+  const grad = (h, x, y) => {
+    const u = (h & 1) ? -x : x;
+    const v = (h & 2) ? -y : y;
+    return u + v;
+  };
+  return function noise2(x, y) {
+    const X = Math.floor(x) & 255, Y = Math.floor(y) & 255;
+    x -= Math.floor(x); y -= Math.floor(y);
+    const u = fade(x), v = fade(y);
+    const A = p[X] + Y, B = p[X + 1] + Y;
+    return lerp(
+      lerp(grad(p[A], x, y),     grad(p[B], x - 1, y),     u),
+      lerp(grad(p[A + 1], x, y - 1), grad(p[B + 1], x - 1, y - 1), u),
+      v
+    );
+  };
+})();
+
+/* --------------------------------------------------------------------------- */
+
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d", { alpha: false });
+
+const PALETTES = {
+  aurora:  ["#39d3ff", "#5b8cff", "#a05bff", "#ff5bc4"],
+  ember:   ["#ffd166", "#ff8c42", "#ff5252", "#c1121f"],
+  forest:  ["#bef264", "#4ade80", "#14b8a6", "#0ea5e9"],
+  mono:    ["#e7e9f3", "#9aa0b4", "#6b7088", "#ffffff"],
+  candy:   ["#ff9ff3", "#feca57", "#48dbfb", "#1dd1a1"],
+};
+
+const state = {
+  count: 2200,
+  scale: 0.0020,      // spatial frequency of the noise field
+  speed: 1.4,         // particle velocity
+  trail: 0.94,        // fade factor (higher = longer trails)
+  curl: 2.6,          // how strongly the field bends the velocity
+  palette: "aurora",
+  paused: false,
+};
+
+let W, H, DPR;
+let particles = [];
+let mouse = { x: -9999, y: -9999, down: false, active: false };
+let zoff = 0;
+
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = canvas.width = Math.floor(innerWidth * DPR);
+  H = canvas.height = Math.floor(innerHeight * DPR);
+  canvas.style.width = innerWidth + "px";
+  canvas.style.height = innerHeight + "px";
+  ctx.fillStyle = "#07080d";
+  ctx.fillRect(0, 0, W, H);
+}
+window.addEventListener("resize", resize);
+
+function hexToRgb(h) {
+  const n = parseInt(h.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function makeParticle() {
+  return {
+    x: Math.random() * W,
+    y: Math.random() * H,
+    px: 0, py: 0,
+    life: Math.random() * 200,
+    c: (Math.random() * 4) | 0, // palette index
+  };
+}
+
+function rebuild() {
+  particles = [];
+  for (let i = 0; i < state.count; i++) particles.push(makeParticle());
+}
+
+/* ---- main loop ---- */
+let last = performance.now();
+let fpsSmooth = 60;
+
+function frame(now) {
+  const dt = now - last;
+  last = now;
+  fpsSmooth += ((1000 / Math.max(dt, 1)) - fpsSmooth) * 0.08;
+
+  if (!state.paused) step();
+  requestAnimationFrame(frame);
+}
+
+function step() {
+  // Fade the whole canvas slightly to create trails.
+  ctx.globalCompositeOperation = "source-over";
+  ctx.fillStyle = `rgba(7, 8, 13, ${1 - state.trail})`;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.globalCompositeOperation = "lighter";
+  const cols = PALETTES[state.palette].map(hexToRgb);
+  const sc = state.scale;
+  const spd = state.speed * DPR;
+  const curl = state.curl;
+  zoff += 0.0009;
+
+  for (let i = 0; i < particles.length; i++) {
+    const pt = particles[i];
+    pt.px = pt.x; pt.py = pt.y;
+
+    // Flow angle from layered Perlin noise -> smooth vector field.
+    const n = Perlin(pt.x * sc, pt.y * sc + zoff);
+    let ang = n * Math.PI * curl;
+    let vx = Math.cos(ang) * spd;
+    let vy = Math.sin(ang) * spd;
+
+    // Mouse interaction: push away (default) or attract (on click).
+    if (mouse.active) {
+      const dx = pt.x - mouse.x * DPR;
+      const dy = pt.y - mouse.y * DPR;
+      const d2 = dx * dx + dy * dy;
+      const R = 150 * DPR;
+      if (d2 < R * R) {
+        const d = Math.sqrt(d2) || 1;
+        const force = (1 - d / R) * spd * 3.2;
+        const sign = mouse.down ? -1 : 1;
+        vx += (dx / d) * force * sign;
+        vy += (dy / d) * force * sign;
+      }
+    }
+
+    pt.x += vx;
+    pt.y += vy;
+    pt.life--;
+
+    // Respawn when off-screen or aged out.
+    if (pt.x < 0 || pt.x > W || pt.y < 0 || pt.y > H || pt.life < 0) {
+      Object.assign(pt, makeParticle());
+      continue;
+    }
+
+    const [r, g, b] = cols[pt.c];
+    ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.5)`;
+    ctx.lineWidth = DPR;
+    ctx.beginPath();
+    ctx.moveTo(pt.px, pt.py);
+    ctx.lineTo(pt.x, pt.y);
+    ctx.stroke();
+  }
+}
+
+/* ---- UI wiring ---- */
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 0) => v.toFixed(d);
+
+function bind(id, key, transform, labelId, labelFmt) {
+  const el = $(id);
+  el.addEventListener("input", () => {
+    state[key] = transform(+el.value);
+    if (labelId) $(labelId).textContent = labelFmt(state[key]);
+    if (key === "count") { rebuild(); $("pcount").textContent = state.count; }
+  });
+}
+bind("count", "count", v => v, "vCount", v => v);
+bind("scale", "scale", v => v / 10000, "vScale", v => v.toFixed(4));
+bind("speed", "speed", v => v / 10, "vSpeed", v => v.toFixed(1));
+bind("trail", "trail", v => v / 100, "vTrail", v => v.toFixed(2));
+bind("curl",  "curl",  v => v / 10, "vCurl",  v => v.toFixed(1));
+
+// palette swatches
+const palWrap = $("palettes");
+Object.entries(PALETTES).forEach(([name, cols]) => {
+  const sw = document.createElement("div");
+  sw.className = "swatch" + (name === state.palette ? " active" : "");
+  sw.style.background = `linear-gradient(135deg, ${cols.join(",")})`;
+  sw.title = name;
+  sw.addEventListener("click", () => {
+    state.palette = name;
+    [...palWrap.children].forEach(c => c.classList.remove("active"));
+    sw.classList.add("active");
+  });
+  palWrap.appendChild(sw);
+});
+
+$("pauseBtn").addEventListener("click", togglePause);
+$("clearBtn").addEventListener("click", () => {
+  ctx.globalCompositeOperation = "source-over";
+  ctx.fillStyle = "#07080d";
+  ctx.fillRect(0, 0, W, H);
+});
+$("saveBtn").addEventListener("click", () => {
+  const a = document.createElement("a");
+  a.download = `flowfield-${Date.now()}.png`;
+  a.href = canvas.toDataURL("image/png");
+  a.click();
+});
+
+function togglePause() {
+  state.paused = !state.paused;
+  $("pauseBtn").textContent = state.paused ? "Resume" : "Pause";
+}
+
+// panel show/hide
+const panel = $("panel"), toggle = $("toggle");
+function setPanel(hidden) {
+  panel.classList.toggle("hidden", hidden);
+  toggle.classList.toggle("show", hidden);
+}
+toggle.addEventListener("click", () => setPanel(false));
+
+// pointer
+function onMove(e) {
+  const t = e.touches ? e.touches[0] : e;
+  mouse.x = t.clientX; mouse.y = t.clientY; mouse.active = true;
+}
+addEventListener("mousemove", onMove);
+addEventListener("touchmove", onMove, { passive: true });
+addEventListener("mousedown", () => mouse.down = true);
+addEventListener("mouseup", () => mouse.down = false);
+addEventListener("mouseleave", () => mouse.active = false);
+addEventListener("touchstart", e => { mouse.down = true; onMove(e); }, { passive: true });
+addEventListener("touchend", () => { mouse.down = false; mouse.active = false; });
+
+// keyboard
+addEventListener("keydown", e => {
+  if (e.code === "Space") { e.preventDefault(); togglePause(); }
+  if (e.key.toLowerCase() === "h") setPanel(!panel.classList.contains("hidden"));
+});
+
+// stats
+setInterval(() => { $("fps").textContent = Math.round(fpsSmooth); }, 400);
+
+/* ---- boot ---- */
+resize();
+rebuild();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
