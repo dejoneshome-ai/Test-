@@ -3,429 +3,914 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Flow Field — Generative Art Playground</title>
+<title>TradeDoc — Quote & Invoice Builder</title>
+
+<!--
+  ============================================================
+  WHAT THIS FILE IS
+  ============================================================
+  A single self-contained web page. Everything — the layout,
+  the colours, and the logic — lives in this one file.
+  No internet connection is needed once it's loaded.
+  ============================================================
+-->
+
 <style>
-  :root {
-    --bg: #07080d;
-    --panel: rgba(18, 20, 32, 0.72);
-    --border: rgba(255, 255, 255, 0.08);
-    --text: #e7e9f3;
-    --muted: #9aa0b4;
-    --accent: #7c9cff;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; overflow: hidden; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    -webkit-font-smoothing: antialiased;
-  }
-  canvas { display: block; position: fixed; inset: 0; }
+/* ============================================================
+   STYLES (CSS)
+   This section controls how everything looks.
+   Think of it like a stylesheet in Word — fonts, colours,
+   spacing, borders, etc.
+   ============================================================ */
 
-  .panel {
-    position: fixed;
-    top: 20px;
-    left: 20px;
-    width: 280px;
-    padding: 20px;
-    background: var(--panel);
-    backdrop-filter: blur(18px) saturate(140%);
-    -webkit-backdrop-filter: blur(18px) saturate(140%);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
-    z-index: 10;
-    transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease;
-  }
-  .panel.hidden { transform: translateX(-340px); opacity: 0; pointer-events: none; }
+/* CSS "variables" — our colour palette in one place.
+   Change these to rebrand the whole page. */
+:root {
+  --brand:   #1a56db;   /* main blue */
+  --brand-dk:#1341b0;   /* darker blue for hover effects */
+  --surface: #f8fafc;   /* very light grey background */
+  --card:    #ffffff;   /* white card backgrounds */
+  --border:  #e2e8f0;   /* light grey borders */
+  --text:    #1e293b;   /* near-black text */
+  --muted:   #64748b;   /* dimmer text for labels */
+  --danger:  #ef4444;   /* red, used for the remove-row button */
+  --success: #16a34a;   /* green */
+  --radius:  10px;      /* how rounded the corners are */
+  --shadow:  0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+}
 
-  .title { font-size: 17px; font-weight: 650; letter-spacing: 0.2px; }
-  .subtitle { font-size: 12px; color: var(--muted); margin-top: 3px; margin-bottom: 18px; }
+/* Reset browser defaults so things look the same everywhere */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  .control { margin-bottom: 16px; }
-  .control label {
-    display: flex; justify-content: space-between;
-    font-size: 12px; color: var(--muted); margin-bottom: 7px;
-  }
-  .control label b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 100vh;
+  padding-bottom: 60px;
+}
 
-  input[type="range"] {
-    -webkit-appearance: none; appearance: none;
-    width: 100%; height: 4px; border-radius: 4px;
-    background: rgba(255, 255, 255, 0.12); outline: none;
-  }
-  input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none; appearance: none;
-    width: 15px; height: 15px; border-radius: 50%;
-    background: var(--accent); cursor: pointer;
-    box-shadow: 0 0 0 4px rgba(124, 156, 255, 0.18);
-    transition: transform 0.12s ease;
-  }
-  input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.18); }
-  input[type="range"]::-moz-range-thumb {
-    width: 15px; height: 15px; border: none; border-radius: 50%;
-    background: var(--accent); cursor: pointer;
-  }
+/* ---- Top bar ---- */
+header {
+  background: var(--brand);
+  color: #fff;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 58px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+header span { font-size: 13px; opacity: .75; }
 
-  .palettes { display: flex; gap: 8px; margin-top: 4px; }
-  .swatch {
-    flex: 1; height: 30px; border-radius: 8px; cursor: pointer;
-    border: 2px solid transparent; transition: transform 0.15s ease, border-color 0.15s ease;
-  }
-  .swatch:hover { transform: translateY(-2px); }
-  .swatch.active { border-color: #fff; }
+/* ---- Mode toggle (Quote / Invoice) ---- */
+.mode-bar {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.mode-bar label { font-weight: 600; color: var(--muted); font-size: 14px; }
 
-  .row { display: flex; gap: 10px; margin-top: 6px; }
-  button {
-    flex: 1; padding: 9px 12px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid var(--border);
-    color: var(--text); border-radius: 10px;
-    font-size: 12.5px; font-weight: 550; cursor: pointer;
-    transition: background 0.15s ease, transform 0.1s ease;
-  }
-  button:hover { background: rgba(255, 255, 255, 0.12); }
-  button:active { transform: scale(0.97); }
-  button.primary { background: var(--accent); border-color: transparent; color: #0a0c16; }
-  button.primary:hover { background: #93acff; }
+/* The toggle buttons — these look like pill-shaped radio buttons */
+.toggle-group {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.toggle-group input[type="radio"] { display: none; } /* hide the real radio button */
+.toggle-group label {
+  padding: 7px 20px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+  transition: all .18s ease;
+  user-select: none;
+}
+/* When a radio button is checked, highlight its label */
+.toggle-group input[type="radio"]:checked + label {
+  background: var(--brand);
+  color: #fff;
+  font-weight: 600;
+}
 
-  .hint {
-    position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
-    font-size: 12px; color: var(--muted);
-    background: var(--panel); padding: 8px 16px; border-radius: 999px;
-    border: 1px solid var(--border); backdrop-filter: blur(12px);
-    z-index: 10; white-space: nowrap;
-  }
-  .hint b { color: var(--text); font-weight: 600; }
+/* ---- Main layout ---- */
+.container {
+  max-width: 900px;
+  margin: 28px auto;
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
 
-  .toggle {
-    position: fixed; top: 20px; left: 20px; z-index: 9;
-    width: 42px; height: 42px; border-radius: 12px;
-    background: var(--panel); border: 1px solid var(--border);
-    backdrop-filter: blur(12px); cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    opacity: 0; pointer-events: none; transition: opacity 0.35s ease;
-  }
-  .toggle.show { opacity: 1; pointer-events: auto; }
-  .toggle svg { width: 20px; height: 20px; stroke: var(--text); }
+/* ---- White card sections ---- */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 24px;
+}
+.card h2 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--brand);
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  margin-bottom: 18px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
 
-  .stats {
-    position: fixed; top: 20px; right: 20px; z-index: 10;
-    font-size: 11px; color: var(--muted); text-align: right;
-    font-variant-numeric: tabular-nums; line-height: 1.7;
-    background: var(--panel); padding: 10px 14px; border-radius: 12px;
-    border: 1px solid var(--border); backdrop-filter: blur(12px);
-  }
-  .stats b { color: var(--text); font-weight: 600; }
+/* ---- Form fields ---- */
+/* A "grid" lays fields out in neat columns */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group.span2 { grid-column: span 2; } /* takes up two columns */
+
+label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="date"],
+input[type="number"],
+textarea {
+  width: 100%;
+  border: 1.5px solid var(--border);
+  border-radius: 7px;
+  padding: 9px 12px;
+  font-size: 14px;
+  color: var(--text);
+  background: #fff;
+  transition: border-color .15s ease, box-shadow .15s ease;
+  outline: none;
+  font-family: inherit;
+}
+input:focus, textarea:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(26,86,219,.12);
+}
+textarea { resize: vertical; min-height: 80px; }
+
+/* ---- Logo upload area ---- */
+.logo-area {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.logo-preview {
+  width: 90px;
+  height: 90px;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.logo-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.logo-placeholder { font-size: 12px; color: var(--muted); text-align: center; padding: 8px; }
+
+.logo-controls { display: flex; flex-direction: column; gap: 8px; }
+.btn-sm {
+  padding: 7px 14px;
+  border-radius: 7px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text);
+  transition: background .15s, border-color .15s;
+}
+.btn-sm:hover { background: var(--border); }
+.btn-sm.danger { border-color: var(--danger); color: var(--danger); }
+.btn-sm.danger:hover { background: #fef2f2; }
+
+/* ---- Line items table ---- */
+/* "Line items" are the rows in the quote — each job or material */
+.items-table-wrap { overflow-x: auto; } /* allows horizontal scroll on small screens */
+
+table {
+  width: 100%;
+  border-collapse: collapse;  /* removes gaps between cells */
+  font-size: 14px;
+}
+th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  padding: 8px 10px;
+  background: var(--surface);
+  border-bottom: 2px solid var(--border);
+}
+td {
+  padding: 6px 6px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+/* Make the table inputs borderless so the table looks clean */
+td input[type="text"],
+td input[type="number"] {
+  border: 1.5px solid transparent;
+  background: transparent;
+  padding: 6px 8px;
+}
+td input:focus {
+  border-color: var(--brand);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(26,86,219,.10);
+  border-radius: 5px;
+}
+.col-desc { width: 45%; }
+.col-qty  { width: 10%; min-width: 70px; }
+.col-rate { width: 15%; min-width: 100px; }
+.col-total{ width: 15%; min-width: 100px; text-align: right; }
+.col-del  { width: 8%;  min-width: 40px;  text-align: center; }
+
+.row-total {
+  font-weight: 600;
+  padding-right: 10px;
+  color: var(--text);
+}
+
+/* The small "×" button to delete a row */
+.btn-del {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 5px;
+  transition: background .12s;
+}
+.btn-del:hover { background: #fef2f2; }
+
+/* "Add row" button below the table */
+.btn-add-row {
+  margin-top: 12px;
+  padding: 8px 16px;
+  border: 1.5px dashed var(--brand);
+  background: none;
+  color: var(--brand);
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s;
+}
+.btn-add-row:hover { background: rgba(26,86,219,.06); }
+
+/* ---- Totals panel ---- */
+/* Right-aligned summary of subtotal, VAT, grand total */
+.totals-wrap {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+.totals-table {
+  width: 300px;
+}
+.totals-table td {
+  border: none;
+  padding: 5px 10px;
+  font-size: 15px;
+}
+.totals-table td:first-child { color: var(--muted); }
+.totals-table td:last-child  { text-align: right; font-weight: 600; }
+.totals-table .grand-total td {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--brand);
+  border-top: 2px solid var(--border);
+  padding-top: 10px;
+}
+
+/* ---- VAT checkbox row ---- */
+.vat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+.vat-row input[type="checkbox"] {
+  width: 17px; height: 17px;
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+.vat-row label {
+  font-size: 14px;
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 500;
+}
+.vat-rate-input {
+  width: 70px !important;
+  display: inline-block;
+}
+
+/* ---- Notes / terms ---- */
+.notes-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* ---- Action buttons (bottom) ---- */
+.actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 12px 28px;
+  border-radius: 8px;
+  border: none;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .18s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-primary {
+  background: var(--brand);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--brand-dk); transform: translateY(-1px); }
+.btn-secondary {
+  background: var(--card);
+  color: var(--text);
+  border: 1.5px solid var(--border);
+}
+.btn-secondary:hover { background: var(--surface); }
+
+/* ---- Saved indicator ---- */
+.saved-badge {
+  font-size: 12px;
+  color: var(--success);
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity .3s;
+  align-self: center;
+}
+.saved-badge.show { opacity: 1; }
+
+/* ---- Responsive: stack on mobile ---- */
+@media (max-width: 600px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .form-group.span2 { grid-column: span 1; }
+  .container { padding: 0 10px; }
+  .card { padding: 16px; }
+}
 </style>
 </head>
 <body>
-<canvas id="c"></canvas>
 
-<div class="panel" id="panel">
-  <div class="title">Flow Field</div>
-  <div class="subtitle">A generative particle playground</div>
+<!-- ============================================================
+     HTML (the structure — like the skeleton of the page)
+     ============================================================ -->
 
-  <div class="control">
-    <label>Particles <b id="vCount">2200</b></label>
-    <input type="range" id="count" min="200" max="6000" step="100" value="2200" />
-  </div>
-  <div class="control">
-    <label>Flow scale <b id="vScale">0.0020</b></label>
-    <input type="range" id="scale" min="5" max="60" step="1" value="20" />
-  </div>
-  <div class="control">
-    <label>Speed <b id="vSpeed">1.4</b></label>
-    <input type="range" id="speed" min="2" max="50" step="1" value="14" />
-  </div>
-  <div class="control">
-    <label>Trail length <b id="vTrail">0.94</b></label>
-    <input type="range" id="trail" min="70" max="99" step="1" value="94" />
-  </div>
-  <div class="control">
-    <label>Curl <b id="vCurl">2.6</b></label>
-    <input type="range" id="curl" min="5" max="60" step="1" value="26" />
-  </div>
+<!-- Top navigation bar -->
+<header>
+  <h1>TradeDoc</h1>
+  <span>Quote &amp; Invoice Builder</span>
+</header>
 
-  <div class="control">
-    <label>Palette</label>
-    <div class="palettes" id="palettes"></div>
+<!-- Quote vs Invoice toggle -->
+<div class="mode-bar">
+  <label>Document type:</label>
+  <div class="toggle-group">
+    <!--
+      These are "radio buttons" — only one can be selected at a time.
+      We hide the actual circles and style the labels instead.
+    -->
+    <input type="radio" name="docMode" id="modeQuote" value="Quote" checked />
+    <label for="modeQuote">Quote</label>
+    <input type="radio" name="docMode" id="modeInvoice" value="Invoice" />
+    <label for="modeInvoice">Invoice</label>
   </div>
-
-  <div class="row">
-    <button id="pauseBtn">Pause</button>
-    <button id="clearBtn">Clear</button>
-  </div>
-  <div class="row">
-    <button class="primary" id="saveBtn">Save PNG</button>
-  </div>
+  <!-- This little badge pops up briefly when business details are saved -->
+  <span class="saved-badge" id="savedBadge">&#10003; Details saved</span>
 </div>
 
-<div class="toggle" id="toggle" title="Show controls">
-  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
-    <line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/>
-  </svg>
-</div>
+<!-- Main content area -->
+<div class="container">
 
-<div class="stats" id="stats"><b id="fps">60</b> fps<br><span id="pcount">2200</span> particles</div>
+  <!-- ===== Section 1: YOUR business details ===== -->
+  <div class="card">
+    <h2>Your Business Details</h2>
+    <!--
+      "localStorage" will remember these fields automatically.
+      Think of it like the browser's built-in notepad —
+      the values stay even after you close the tab.
+    -->
+    <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:flex-start;">
+      <!-- Logo upload -->
+      <div>
+        <label style="display:block; margin-bottom:8px;">Business Logo</label>
+        <div class="logo-area">
+          <div class="logo-preview" id="logoPreview">
+            <span class="logo-placeholder">No logo<br>uploaded</span>
+          </div>
+          <div class="logo-controls">
+            <button class="btn-sm" onclick="document.getElementById('logoInput').click()">
+              Upload Logo
+            </button>
+            <!-- This file input is hidden; clicking the button above triggers it -->
+            <input type="file" id="logoInput" accept="image/*" style="display:none" />
+            <button class="btn-sm danger" id="removeLogoBtn" style="display:none"
+                    onclick="removeLogo()">
+              Remove
+            </button>
+            <span style="font-size:12px; color:var(--muted);">PNG, JPG, SVG</span>
+          </div>
+        </div>
+      </div>
 
-<div class="hint">Move your mouse to <b>push</b> the flow · <b>Click</b> to attract · <b>H</b> to hide panel · <b>Space</b> to pause</div>
+      <!-- Business text fields -->
+      <div style="flex:1; min-width:260px;">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="bizName">Business Name</label>
+            <input type="text" id="bizName" placeholder="e.g. Smith Plumbing Ltd" />
+          </div>
+          <div class="form-group">
+            <label for="bizContact">Your Name</label>
+            <input type="text" id="bizContact" placeholder="e.g. John Smith" />
+          </div>
+          <div class="form-group">
+            <label for="bizPhone">Phone Number</label>
+            <input type="tel" id="bizPhone" placeholder="e.g. 07700 900000" />
+          </div>
+          <div class="form-group">
+            <label for="bizEmail">Email Address</label>
+            <input type="email" id="bizEmail" placeholder="e.g. john@smithplumbing.co.uk" />
+          </div>
+          <div class="form-group span2">
+            <label for="bizAddress">Business Address</label>
+            <input type="text" id="bizAddress" placeholder="e.g. 12 High Street, London, SW1A 1AA" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
+  <!-- ===== Section 2: Customer details + document info ===== -->
+  <div class="card">
+    <h2>Customer &amp; Document Details</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="custName">Customer Name</label>
+        <input type="text" id="custName" placeholder="e.g. Jane Doe" />
+      </div>
+      <div class="form-group">
+        <label for="custAddress">Customer Address</label>
+        <input type="text" id="custAddress" placeholder="e.g. 45 Oak Avenue, Manchester" />
+      </div>
+      <div class="form-group">
+        <!-- The label text changes to "Quote No." or "Invoice No." depending on mode -->
+        <label for="docNumber" id="docNumberLabel">Quote No.</label>
+        <input type="text" id="docNumber" placeholder="e.g. Q-0001" />
+      </div>
+      <div class="form-group">
+        <label for="docDate">Date</label>
+        <!-- type="date" gives a calendar picker in most browsers -->
+        <input type="date" id="docDate" />
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Section 3: Line items ===== -->
+  <div class="card">
+    <h2>Work &amp; Materials</h2>
+    <div class="items-table-wrap">
+      <table id="itemsTable">
+        <thead>
+          <tr>
+            <th class="col-desc">Description</th>
+            <th class="col-qty">Qty</th>
+            <th class="col-rate">Unit Price (£)</th>
+            <th class="col-total">Total</th>
+            <th class="col-del"></th>
+          </tr>
+        </thead>
+        <!-- Rows are added here by JavaScript -->
+        <tbody id="itemsBody">
+        </tbody>
+      </table>
+    </div>
+
+    <button class="btn-add-row" onclick="addRow()">+ Add Row</button>
+
+    <!-- VAT toggle -->
+    <div class="vat-row" style="margin-top: 20px;">
+      <input type="checkbox" id="vatCheck" />
+      <label for="vatCheck">Apply VAT at</label>
+      <input type="number" class="vat-rate-input" id="vatRate" value="20" min="0" max="100" step="0.5" />
+      <label for="vatRate">%</label>
+    </div>
+
+    <!-- Totals summary -->
+    <div class="totals-wrap">
+      <table class="totals-table">
+        <tbody>
+          <tr>
+            <td>Subtotal</td>
+            <td id="subtotalDisplay">£0.00</td>
+          </tr>
+          <tr id="vatRow" style="display:none">
+            <td id="vatLabel">VAT (20%)</td>
+            <td id="vatDisplay">£0.00</td>
+          </tr>
+          <tr class="grand-total">
+            <td id="grandLabel">Total</td>
+            <td id="grandDisplay">£0.00</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== Section 4: Notes / Terms ===== -->
+  <div class="card">
+    <h2>Notes &amp; Terms</h2>
+    <div class="form-group">
+      <label for="notes">Notes / Payment Terms</label>
+      <textarea id="notes"
+        placeholder="e.g. Payment due within 30 days. Bank transfer preferred. Account: 12-34-56 / 87654321"></textarea>
+    </div>
+    <p class="notes-hint">
+      These notes will appear at the bottom of the document. Use them for payment
+      terms, warranty information, or any other details.
+    </p>
+  </div>
+
+  <!-- ===== Action buttons ===== -->
+  <div class="actions">
+    <button class="btn btn-primary" onclick="saveBusinessDetails()">
+      &#128190; Save My Details
+    </button>
+    <!--
+      The PDF button is a placeholder for now.
+      We'll wire it up in the next step.
+    -->
+    <button class="btn btn-secondary" id="pdfBtn" onclick="alert('PDF coming soon! This will be wired up in the next step.')">
+      &#128196; Download PDF
+    </button>
+  </div>
+
+</div><!-- end .container -->
+
+
+<!-- ============================================================
+     JAVASCRIPT (the logic — what makes things actually work)
+     ============================================================ -->
 <script>
 "use strict";
 
-/* ---------------------------------------------------------------------------
-   Perlin noise (classic Ken Perlin improved noise, 2D slice of 3D).
-   Self-contained so the whole piece is a single dependency-free file.
---------------------------------------------------------------------------- */
-const Perlin = (() => {
-  const p = new Uint8Array(512);
-  const perm = [...Array(256).keys()];
-  // deterministic-ish shuffle seeded by time for variety each load
-  let seed = (Date.now() % 2147483647) || 1;
-  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-  for (let i = 255; i > 0; i--) {
-    const j = (rnd() * (i + 1)) | 0;
-    [perm[i], perm[j]] = [perm[j], perm[i]];
-  }
-  for (let i = 0; i < 512; i++) p[i] = perm[i & 255];
+/*
+  ============================================================
+  PART 1 — QUOTE / INVOICE MODE TOGGLE
+  ============================================================
+  When the user clicks "Quote" or "Invoice", we update:
+  - The page title
+  - The document number label
+  - The "Total" label in the totals section
+  ============================================================
+*/
 
-  const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
-  const lerp = (a, b, t) => a + t * (b - a);
-  const grad = (h, x, y) => {
-    const u = (h & 1) ? -x : x;
-    const v = (h & 2) ? -y : y;
-    return u + v;
-  };
-  return function noise2(x, y) {
-    const X = Math.floor(x) & 255, Y = Math.floor(y) & 255;
-    x -= Math.floor(x); y -= Math.floor(y);
-    const u = fade(x), v = fade(y);
-    const A = p[X] + Y, B = p[X + 1] + Y;
-    return lerp(
-      lerp(grad(p[A], x, y),     grad(p[B], x - 1, y),     u),
-      lerp(grad(p[A + 1], x, y - 1), grad(p[B + 1], x - 1, y - 1), u),
-      v
-    );
-  };
+// querySelectorAll picks up ALL the radio inputs in the toggle group
+document.querySelectorAll('input[name="docMode"]').forEach(radio => {
+  radio.addEventListener("change", updateMode);
+});
+
+function updateMode() {
+  // Find whichever radio button is currently selected
+  const mode = document.querySelector('input[name="docMode"]:checked').value;
+
+  // Update the document number label
+  document.getElementById("docNumberLabel").textContent = mode + " No.";
+
+  // Update the grand total label
+  document.getElementById("grandLabel").textContent = mode + " Total";
+
+  // Update the browser tab title
+  document.title = "TradeDoc — " + mode + " Builder";
+}
+
+// Run once on load so the labels are correct straight away
+updateMode();
+
+
+/*
+  ============================================================
+  PART 2 — SET TODAY'S DATE AUTOMATICALLY
+  ============================================================
+  The date field uses the "YYYY-MM-DD" format that browsers
+  understand. We build that string from JavaScript's Date object.
+  ============================================================
+*/
+
+(function setTodayDate() {
+  const today = new Date();
+  // padStart(2, "0") ensures single-digit months/days get a leading zero
+  // e.g. month 6 becomes "06"
+  const yyyy = today.getFullYear();
+  const mm   = String(today.getMonth() + 1).padStart(2, "0"); // months are 0-indexed!
+  const dd   = String(today.getDate()).padStart(2, "0");
+  document.getElementById("docDate").value = `${yyyy}-${mm}-${dd}`;
 })();
 
-/* --------------------------------------------------------------------------- */
 
-const canvas = document.getElementById("c");
-const ctx = canvas.getContext("2d", { alpha: false });
+/*
+  ============================================================
+  PART 3 — LINE ITEMS (the rows in the table)
+  ============================================================
+  Each row has: description, quantity, unit price → auto total.
+  We keep all rows in an array called `items`.
+  ============================================================
+*/
 
-const PALETTES = {
-  aurora:  ["#39d3ff", "#5b8cff", "#a05bff", "#ff5bc4"],
-  ember:   ["#ffd166", "#ff8c42", "#ff5252", "#c1121f"],
-  forest:  ["#bef264", "#4ade80", "#14b8a6", "#0ea5e9"],
-  mono:    ["#e7e9f3", "#9aa0b4", "#6b7088", "#ffffff"],
-  candy:   ["#ff9ff3", "#feca57", "#48dbfb", "#1dd1a1"],
-};
+// Each item is a plain object with an id and three values
+let items = [];
+let nextId = 1; // we give each row a unique ID so we can find and delete it
 
-const state = {
-  count: 2200,
-  scale: 0.0020,      // spatial frequency of the noise field
-  speed: 1.4,         // particle velocity
-  trail: 0.94,        // fade factor (higher = longer trails)
-  curl: 2.6,          // how strongly the field bends the velocity
-  palette: "aurora",
-  paused: false,
-};
-
-let W, H, DPR;
-let particles = [];
-let mouse = { x: -9999, y: -9999, down: false, active: false };
-let zoff = 0;
-
-function resize() {
-  DPR = Math.min(window.devicePixelRatio || 1, 2);
-  W = canvas.width = Math.floor(innerWidth * DPR);
-  H = canvas.height = Math.floor(innerHeight * DPR);
-  canvas.style.width = innerWidth + "px";
-  canvas.style.height = innerHeight + "px";
-  ctx.fillStyle = "#07080d";
-  ctx.fillRect(0, 0, W, H);
-}
-window.addEventListener("resize", resize);
-
-function hexToRgb(h) {
-  const n = parseInt(h.slice(1), 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+function addRow(desc = "", qty = 1, rate = "") {
+  const id = nextId++;
+  items.push({ id, desc, qty, rate });
+  renderItems(); // redraw the whole table
 }
 
-function makeParticle() {
-  return {
-    x: Math.random() * W,
-    y: Math.random() * H,
-    px: 0, py: 0,
-    life: Math.random() * 200,
-    c: (Math.random() * 4) | 0, // palette index
+function removeRow(id) {
+  // "filter" keeps only rows that do NOT match the id we want to delete
+  items = items.filter(item => item.id !== id);
+  renderItems();
+}
+
+// Called whenever a cell in the table changes
+function updateItem(id, field, value) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  item[field] = value;
+  recalcTotals(); // just update the numbers, no need to redraw the whole table
+}
+
+function renderItems() {
+  const tbody = document.getElementById("itemsBody");
+  // Clear the table body and rebuild it from the `items` array
+  tbody.innerHTML = "";
+
+  items.forEach(item => {
+    const lineTotal = calcLineTotal(item);
+
+    // Create a new table row (<tr>) element
+    const tr = document.createElement("tr");
+
+    // innerHTML sets the HTML content of the row
+    // Note: we use data-id to link inputs back to the item object
+    tr.innerHTML = `
+      <td class="col-desc">
+        <input type="text" placeholder="e.g. Labour — fix boiler"
+               value="${escHtml(item.desc)}"
+               oninput="updateItem(${item.id}, 'desc', this.value)"
+               style="width:100%" />
+      </td>
+      <td class="col-qty">
+        <input type="number" min="0" step="0.5" value="${item.qty}"
+               oninput="updateItem(${item.id}, 'qty', this.value)"
+               style="width:100%; text-align:center" />
+      </td>
+      <td class="col-rate">
+        <input type="number" min="0" step="0.01" placeholder="0.00"
+               value="${item.rate}"
+               oninput="updateItem(${item.id}, 'rate', this.value)"
+               style="width:100%; text-align:right" />
+      </td>
+      <td class="col-total">
+        <span class="row-total" id="lt-${item.id}">${formatCurrency(lineTotal)}</span>
+      </td>
+      <td class="col-del">
+        <button class="btn-del" onclick="removeRow(${item.id})" title="Remove row">&#215;</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  recalcTotals();
+}
+
+function calcLineTotal(item) {
+  const qty  = parseFloat(item.qty)  || 0;
+  const rate = parseFloat(item.rate) || 0;
+  return qty * rate;
+}
+
+// Small helper to prevent XSS: turns < and > into safe HTML entities
+// so a description like "<script>" doesn't break the page
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+
+/*
+  ============================================================
+  PART 4 — LIVE TOTALS
+  ============================================================
+  Every time an item changes, we recalculate and update
+  the subtotal, VAT, and grand total displays.
+  ============================================================
+*/
+
+// Listen for changes to the VAT checkbox and rate field
+document.getElementById("vatCheck").addEventListener("change", recalcTotals);
+document.getElementById("vatRate").addEventListener("input",  recalcTotals);
+
+function recalcTotals() {
+  // Update individual row totals first
+  items.forEach(item => {
+    const el = document.getElementById("lt-" + item.id);
+    if (el) el.textContent = formatCurrency(calcLineTotal(item));
+  });
+
+  // Sum all line totals
+  const subtotal = items.reduce((sum, item) => sum + calcLineTotal(item), 0);
+
+  // VAT
+  const vatChecked = document.getElementById("vatCheck").checked;
+  const vatRate    = parseFloat(document.getElementById("vatRate").value) || 0;
+  const vatAmount  = vatChecked ? subtotal * (vatRate / 100) : 0;
+  const grandTotal = subtotal + vatAmount;
+
+  // Update the display elements
+  document.getElementById("subtotalDisplay").textContent = formatCurrency(subtotal);
+  document.getElementById("vatDisplay").textContent      = formatCurrency(vatAmount);
+  document.getElementById("grandDisplay").textContent    = formatCurrency(grandTotal);
+
+  // Show or hide the VAT row
+  const vatRow = document.getElementById("vatRow");
+  vatRow.style.display = vatChecked ? "" : "none";
+
+  // Update the VAT label to show the current rate
+  document.getElementById("vatLabel").textContent = `VAT (${vatRate}%)`;
+}
+
+// Format a number as British pounds: 1234.5 → "£1,234.50"
+function formatCurrency(num) {
+  return "£" + Number(num).toLocaleString("en-GB", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+// Add two starter rows so the table isn't blank on first load
+addRow();
+addRow();
+
+
+/*
+  ============================================================
+  PART 5 — LOGO UPLOAD
+  ============================================================
+  We read the image file the user picks and convert it to a
+  "data URL" — a long string that encodes the whole image.
+  That string can be stored in localStorage and embedded in HTML.
+  ============================================================
+*/
+
+let logoDataUrl = null; // will hold the base64 image string
+
+document.getElementById("logoInput").addEventListener("change", function () {
+  const file = this.files[0];
+  if (!file) return;
+
+  // FileReader reads the file from the user's computer
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    logoDataUrl = e.target.result; // the image as a data URL
+    showLogoPreview(logoDataUrl);
   };
+  reader.readAsDataURL(file); // triggers the onload above
+});
+
+function showLogoPreview(url) {
+  const preview = document.getElementById("logoPreview");
+  preview.innerHTML = `<img src="${url}" alt="Logo" />`;
+  document.getElementById("removeLogoBtn").style.display = "block";
 }
 
-function rebuild() {
-  particles = [];
-  for (let i = 0; i < state.count; i++) particles.push(makeParticle());
+function removeLogo() {
+  logoDataUrl = null;
+  document.getElementById("logoPreview").innerHTML =
+    '<span class="logo-placeholder">No logo<br>uploaded</span>';
+  document.getElementById("removeLogoBtn").style.display = "none";
+  document.getElementById("logoInput").value = ""; // reset the file input
 }
 
-/* ---- main loop ---- */
-let last = performance.now();
-let fpsSmooth = 60;
 
-function frame(now) {
-  const dt = now - last;
-  last = now;
-  fpsSmooth += ((1000 / Math.max(dt, 1)) - fpsSmooth) * 0.08;
+/*
+  ============================================================
+  PART 6 — LOCALSTORAGE (remembering your business details)
+  ============================================================
+  localStorage is like a tiny key-value store built into every
+  browser. We save the business fields as JSON (a text format
+  for structured data) and load them back when the page opens.
 
-  if (!state.paused) step();
-  requestAnimationFrame(frame);
+  It persists across browser restarts — the data stays until
+  you clear your browser storage or call localStorage.clear().
+  ============================================================
+*/
+
+// The field IDs we want to save/restore
+const BIZ_FIELDS = ["bizName", "bizContact", "bizPhone", "bizEmail", "bizAddress"];
+
+function saveBusinessDetails() {
+  const data = {};
+  BIZ_FIELDS.forEach(id => {
+    data[id] = document.getElementById(id).value;
+  });
+  // Also save the logo if one was uploaded
+  data.logo = logoDataUrl || null;
+
+  // JSON.stringify turns the JS object into a string we can store
+  localStorage.setItem("tradeDocBusiness", JSON.stringify(data));
+
+  // Flash the "saved" badge
+  const badge = document.getElementById("savedBadge");
+  badge.classList.add("show");
+  setTimeout(() => badge.classList.remove("show"), 2500);
 }
 
-function step() {
-  // Fade the whole canvas slightly to create trails.
-  ctx.globalCompositeOperation = "source-over";
-  ctx.fillStyle = `rgba(7, 8, 13, ${1 - state.trail})`;
-  ctx.fillRect(0, 0, W, H);
+function loadBusinessDetails() {
+  const raw = localStorage.getItem("tradeDocBusiness");
+  if (!raw) return; // nothing saved yet — that's fine
 
-  ctx.globalCompositeOperation = "lighter";
-  const cols = PALETTES[state.palette].map(hexToRgb);
-  const sc = state.scale;
-  const spd = state.speed * DPR;
-  const curl = state.curl;
-  zoff += 0.0009;
+  let data;
+  try {
+    data = JSON.parse(raw); // turn the string back into a JS object
+  } catch {
+    return; // if the saved data is corrupted, just skip it
+  }
 
-  for (let i = 0; i < particles.length; i++) {
-    const pt = particles[i];
-    pt.px = pt.x; pt.py = pt.y;
+  BIZ_FIELDS.forEach(id => {
+    if (data[id]) document.getElementById(id).value = data[id];
+  });
 
-    // Flow angle from layered Perlin noise -> smooth vector field.
-    const n = Perlin(pt.x * sc, pt.y * sc + zoff);
-    let ang = n * Math.PI * curl;
-    let vx = Math.cos(ang) * spd;
-    let vy = Math.sin(ang) * spd;
-
-    // Mouse interaction: push away (default) or attract (on click).
-    if (mouse.active) {
-      const dx = pt.x - mouse.x * DPR;
-      const dy = pt.y - mouse.y * DPR;
-      const d2 = dx * dx + dy * dy;
-      const R = 150 * DPR;
-      if (d2 < R * R) {
-        const d = Math.sqrt(d2) || 1;
-        const force = (1 - d / R) * spd * 3.2;
-        const sign = mouse.down ? -1 : 1;
-        vx += (dx / d) * force * sign;
-        vy += (dy / d) * force * sign;
-      }
-    }
-
-    pt.x += vx;
-    pt.y += vy;
-    pt.life--;
-
-    // Respawn when off-screen or aged out.
-    if (pt.x < 0 || pt.x > W || pt.y < 0 || pt.y > H || pt.life < 0) {
-      Object.assign(pt, makeParticle());
-      continue;
-    }
-
-    const [r, g, b] = cols[pt.c];
-    ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.5)`;
-    ctx.lineWidth = DPR;
-    ctx.beginPath();
-    ctx.moveTo(pt.px, pt.py);
-    ctx.lineTo(pt.x, pt.y);
-    ctx.stroke();
+  if (data.logo) {
+    logoDataUrl = data.logo;
+    showLogoPreview(data.logo);
   }
 }
 
-/* ---- UI wiring ---- */
-const $ = id => document.getElementById(id);
-const fmt = (v, d = 0) => v.toFixed(d);
+// Load saved details as soon as the page starts
+loadBusinessDetails();
 
-function bind(id, key, transform, labelId, labelFmt) {
-  const el = $(id);
-  el.addEventListener("input", () => {
-    state[key] = transform(+el.value);
-    if (labelId) $(labelId).textContent = labelFmt(state[key]);
-    if (key === "count") { rebuild(); $("pcount").textContent = state.count; }
-  });
-}
-bind("count", "count", v => v, "vCount", v => v);
-bind("scale", "scale", v => v / 10000, "vScale", v => v.toFixed(4));
-bind("speed", "speed", v => v / 10, "vSpeed", v => v.toFixed(1));
-bind("trail", "trail", v => v / 100, "vTrail", v => v.toFixed(2));
-bind("curl",  "curl",  v => v / 10, "vCurl",  v => v.toFixed(1));
-
-// palette swatches
-const palWrap = $("palettes");
-Object.entries(PALETTES).forEach(([name, cols]) => {
-  const sw = document.createElement("div");
-  sw.className = "swatch" + (name === state.palette ? " active" : "");
-  sw.style.background = `linear-gradient(135deg, ${cols.join(",")})`;
-  sw.title = name;
-  sw.addEventListener("click", () => {
-    state.palette = name;
-    [...palWrap.children].forEach(c => c.classList.remove("active"));
-    sw.classList.add("active");
-  });
-  palWrap.appendChild(sw);
+// Auto-save whenever a business field changes (convenient!)
+BIZ_FIELDS.forEach(id => {
+  document.getElementById(id).addEventListener("blur", saveBusinessDetails);
+  // "blur" fires when the user leaves the field (clicks or tabs away)
 });
 
-$("pauseBtn").addEventListener("click", togglePause);
-$("clearBtn").addEventListener("click", () => {
-  ctx.globalCompositeOperation = "source-over";
-  ctx.fillStyle = "#07080d";
-  ctx.fillRect(0, 0, W, H);
-});
-$("saveBtn").addEventListener("click", () => {
-  const a = document.createElement("a");
-  a.download = `flowfield-${Date.now()}.png`;
-  a.href = canvas.toDataURL("image/png");
-  a.click();
-});
-
-function togglePause() {
-  state.paused = !state.paused;
-  $("pauseBtn").textContent = state.paused ? "Resume" : "Pause";
-}
-
-// panel show/hide
-const panel = $("panel"), toggle = $("toggle");
-function setPanel(hidden) {
-  panel.classList.toggle("hidden", hidden);
-  toggle.classList.toggle("show", hidden);
-}
-toggle.addEventListener("click", () => setPanel(false));
-
-// pointer
-function onMove(e) {
-  const t = e.touches ? e.touches[0] : e;
-  mouse.x = t.clientX; mouse.y = t.clientY; mouse.active = true;
-}
-addEventListener("mousemove", onMove);
-addEventListener("touchmove", onMove, { passive: true });
-addEventListener("mousedown", () => mouse.down = true);
-addEventListener("mouseup", () => mouse.down = false);
-addEventListener("mouseleave", () => mouse.active = false);
-addEventListener("touchstart", e => { mouse.down = true; onMove(e); }, { passive: true });
-addEventListener("touchend", () => { mouse.down = false; mouse.active = false; });
-
-// keyboard
-addEventListener("keydown", e => {
-  if (e.code === "Space") { e.preventDefault(); togglePause(); }
-  if (e.key.toLowerCase() === "h") setPanel(!panel.classList.contains("hidden"));
-});
-
-// stats
-setInterval(() => { $("fps").textContent = Math.round(fpsSmooth); }, 400);
-
-/* ---- boot ---- */
-resize();
-rebuild();
-requestAnimationFrame(frame);
 </script>
 </body>
 </html>
