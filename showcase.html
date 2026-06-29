@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Capabilities Showcase — built in one file</title>
+<meta name="description" content="A dependency-free, single-file gallery of live interactive demos: flow fields, fractals, flocking, synthesis, gravity and more." />
+<style>
+  :root {
+    --bg: #07080d;
+    --bg2: #0b0d18;
+    --panel: rgba(18, 20, 32, 0.72);
+    --panel-solid: #12141f;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.16);
+    --text: #e7e9f3;
+    --muted: #9aa0b4;
+    --faint: #6b7088;
+    --accent: #7c9cff;
+    --accent2: #a05bff;
+    --accent3: #39d3ff;
+    --pink: #ff5bc4;
+    --maxw: 1180px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background:
+      radial-gradient(1200px 700px at 80% -10%, rgba(124,156,255,0.16), transparent 60%),
+      radial-gradient(1000px 600px at 0% 10%, rgba(160,91,255,0.12), transparent 55%),
+      var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+    overflow-x: hidden;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: #a8bcff; }
+
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- nav ---------- */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 24px;
+    background: rgba(7, 8, 13, 0.55);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.3s ease, background 0.3s ease;
+  }
+  nav.scrolled { border-bottom-color: var(--border); }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: 0.2px; }
+  .brand .dot {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: conic-gradient(from 0deg, var(--accent3), var(--accent), var(--accent2), var(--pink), var(--accent3));
+    box-shadow: 0 0 16px rgba(124,156,255,0.7);
+    animation: spin 6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .navlinks { display: flex; gap: 22px; font-size: 14px; color: var(--muted); }
+  .navlinks a { color: var(--muted); }
+  .navlinks a:hover { color: var(--text); }
+  @media (max-width: 720px) { .navlinks { display: none; } }
+
+  /* ---------- hero ---------- */
+  header.hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; overflow: hidden;
+    padding: 120px 24px 80px;
+  }
+  #heroCanvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
+  .hero-inner { position: relative; z-index: 2; max-width: 880px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 14px; border-radius: 999px;
+    background: var(--panel); border: 1px solid var(--border);
+    font-size: 12.5px; color: var(--muted); margin-bottom: 26px;
+    backdrop-filter: blur(8px);
+  }
+  .badge .pulse {
+    width: 7px; height: 7px; border-radius: 50%; background: #4ade80;
+    box-shadow: 0 0 0 0 rgba(74,222,128,0.6); animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(74,222,128,0.5); }
+    70% { box-shadow: 0 0 0 9px rgba(74,222,128,0); }
+    100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); }
+  }
+  h1.title {
+    font-size: clamp(38px, 7vw, 76px); line-height: 1.04; font-weight: 800;
+    letter-spacing: -1.5px; margin-bottom: 22px;
+  }
+  .grad {
+    background: linear-gradient(110deg, var(--accent3), var(--accent) 35%, var(--accent2) 70%, var(--pink));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    background-size: 200% auto; animation: shimmer 7s linear infinite;
+  }
+  @keyframes shimmer { to { background-position: 200% center; } }
+  .lede { font-size: clamp(16px, 2.2vw, 20px); color: var(--muted); max-width: 620px; margin: 0 auto 34px; }
+  .cta-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 9px;
+    padding: 13px 24px; border-radius: 12px; font-weight: 600; font-size: 15px;
+    border: 1px solid var(--border-strong); color: var(--text);
+    background: rgba(255,255,255,0.04); cursor: pointer;
+    transition: transform 0.12s ease, background 0.2s ease, border-color 0.2s ease;
+  }
+  .btn:hover { transform: translateY(-2px); background: rgba(255,255,255,0.09); color: var(--text); }
+  .btn.primary {
+    background: linear-gradient(120deg, var(--accent), var(--accent2));
+    border-color: transparent; color: #0a0c16; box-shadow: 0 12px 30px rgba(124,156,255,0.35);
+  }
+  .btn.primary:hover { box-shadow: 0 16px 40px rgba(124,156,255,0.5); color: #0a0c16; }
+  .scrollcue {
+    position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%);
+    z-index: 2; color: var(--faint); font-size: 12px; letter-spacing: 1px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    animation: bob 2.2s ease-in-out infinite;
+  }
+  @keyframes bob { 0%,100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 8px); } }
+
+  /* ---------- sections ---------- */
+  section { position: relative; padding: 90px 0; z-index: 2; }
+  .eyebrow { font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
+  h2.sec { font-size: clamp(28px, 4vw, 42px); letter-spacing: -0.8px; font-weight: 800; margin-bottom: 14px; }
+  .sec-sub { color: var(--muted); max-width: 640px; font-size: 16px; margin-bottom: 44px; }
+
+  /* reveal-on-scroll */
+  .reveal { opacity: 0; transform: translateY(26px); transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.22,1,0.36,1); }
+  .reveal.in { opacity: 1; transform: none; }
+
+  /* ---------- stats ---------- */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+  @media (max-width: 720px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+  .stat {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 16px;
+    padding: 26px 22px; backdrop-filter: blur(10px);
+  }
+  .stat .num { font-size: 40px; font-weight: 800; letter-spacing: -1px; font-variant-numeric: tabular-nums;
+    background: linear-gradient(120deg, #fff, var(--accent)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .stat .lbl { color: var(--muted); font-size: 13.5px; margin-top: 6px; }
+
+  /* ---------- capability cards ---------- */
+  .cap-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  @media (max-width: 920px) { .cap-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) { .cap-grid { grid-template-columns: 1fr; } }
+  .cap {
+    position: relative; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 16px; padding: 24px; overflow: hidden;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+  .cap::before {
+    content: ""; position: absolute; inset: 0; border-radius: 16px; padding: 1px;
+    background: linear-gradient(130deg, transparent, rgba(124,156,255,0.5), transparent);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    opacity: 0; transition: opacity 0.25s ease;
+  }
+  .cap:hover { transform: translateY(-4px); }
+  .cap:hover::before { opacity: 1; }
+  .cap .ico {
+    width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center;
+    background: linear-gradient(130deg, rgba(124,156,255,0.22), rgba(160,91,255,0.18));
+    border: 1px solid var(--border); margin-bottom: 16px; font-size: 22px;
+  }
+  .cap h3 { font-size: 17px; margin-bottom: 8px; }
+  .cap p { color: var(--muted); font-size: 14px; }
+
+  /* ---------- demo gallery ---------- */
+  .demo-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px; }
+  @media (max-width: 860px) { .demo-grid { grid-template-columns: 1fr; } }
+  .demo {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 18px;
+    overflow: hidden; display: flex; flex-direction: column;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .demo:hover { border-color: var(--border-strong); box-shadow: 0 20px 50px rgba(0,0,0,0.4); }
+  .demo .canvas-wrap { position: relative; aspect-ratio: 16 / 10; background: #05060a; cursor: crosshair; }
+  .demo canvas { display: block; width: 100%; height: 100%; }
+  .demo .tag {
+    position: absolute; top: 12px; left: 12px; z-index: 3;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.5px;
+    padding: 5px 10px; border-radius: 999px; color: var(--text);
+    background: rgba(7,8,13,0.6); border: 1px solid var(--border); backdrop-filter: blur(8px);
+  }
+  .demo .overlay-hint {
+    position: absolute; bottom: 12px; right: 12px; z-index: 3;
+    font-size: 11px; color: var(--muted);
+    background: rgba(7,8,13,0.6); border: 1px solid var(--border);
+    padding: 5px 10px; border-radius: 999px; backdrop-filter: blur(8px);
+  }
+  .demo .meta { padding: 18px 20px 20px; }
+  .demo .meta h3 { font-size: 18px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .demo .meta p { color: var(--muted); font-size: 13.5px; }
+  .demo .meta .links { margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .chip {
+    font-size: 12px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text);
+    transition: background 0.15s ease;
+  }
+  .chip:hover { background: rgba(255,255,255,0.11); color: var(--text); }
+  .chip.solid { background: var(--accent); border-color: transparent; color: #0a0c16; font-weight: 600; }
+  .chip.solid:hover { background: #93acff; }
+
+  /* synth keys */
+  .synth-keys { position: absolute; inset: auto 0 0 0; z-index: 4; display: flex; height: 38%; padding: 0 8px 8px; gap: 4px; }
+  .synth-keys .key {
+    flex: 1; border-radius: 0 0 7px 7px; background: linear-gradient(#1a1d2b, #0d0f18);
+    border: 1px solid rgba(255,255,255,0.07); border-top: none; cursor: pointer;
+    transition: background 0.06s ease, transform 0.06s ease;
+  }
+  .synth-keys .key:hover { background: linear-gradient(#252a40, #14172480); }
+  .synth-keys .key.down { background: linear-gradient(var(--accent), var(--accent2)); transform: translateY(2px); }
+
+  /* ---------- how it's made ---------- */
+  .made-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  @media (max-width: 720px) { .made-grid { grid-template-columns: 1fr; } }
+  .made {
+    background: linear-gradient(160deg, rgba(18,20,32,0.8), rgba(11,13,24,0.7));
+    border: 1px solid var(--border); border-radius: 14px; padding: 22px;
+  }
+  .made h4 { font-size: 15px; margin-bottom: 8px; color: var(--text); }
+  .made code { color: var(--accent3); font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; }
+  .made p { color: var(--muted); font-size: 14px; }
+
+  /* ---------- footer ---------- */
+  footer {
+    position: relative; z-index: 2; border-top: 1px solid var(--border);
+    padding: 50px 0 60px; text-align: center; color: var(--faint); font-size: 14px;
+  }
+  footer .brand { justify-content: center; margin-bottom: 14px; color: var(--text); }
+
+  /* fps meter */
+  #globalFps {
+    position: fixed; bottom: 14px; left: 14px; z-index: 60;
+    font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums;
+    background: rgba(7,8,13,0.6); border: 1px solid var(--border);
+    padding: 5px 10px; border-radius: 8px; backdrop-filter: blur(8px);
+    pointer-events: none;
+  }
+  #globalFps b { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<nav id="nav">
+  <div class="brand"><span class="dot"></span> Capabilities&nbsp;Showcase</div>
+  <div class="navlinks">
+    <a href="#capabilities">What I can do</a>
+    <a href="#gallery">Live demos</a>
+    <a href="#made">How it's made</a>
+    <a href="index.html">Flow Field ↗</a>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <canvas id="heroCanvas"></canvas>
+  <div class="hero-inner">
+    <div class="badge"><span class="pulse"></span> Zero dependencies · zero build step · one HTML file</div>
+    <h1 class="title">Things I can build,<br><span class="grad">all in one file.</span></h1>
+    <p class="lede">A living gallery of interactive demos — generative art, fractals, flocking,
+      real-time audio synthesis and physics — each written from scratch in plain
+      HTML, Canvas and JavaScript. No frameworks. No assets. Just open it.</p>
+    <div class="cta-row">
+      <a class="btn primary" href="#gallery">Explore the demos →</a>
+      <a class="btn" href="index.html">Open the Flow Field toy</a>
+    </div>
+  </div>
+  <div class="scrollcue">SCROLL<span>↓</span></div>
+</header>
+
+<!-- ============ STATS ============ -->
+<section id="stats">
+  <div class="wrap reveal">
+    <div class="stats-grid">
+      <div class="stat"><div class="num" data-count="6" data-suffix="">0</div><div class="lbl">interactive demos</div></div>
+      <div class="stat"><div class="num" data-count="0" data-suffix="">0</div><div class="lbl">dependencies</div></div>
+      <div class="stat"><div class="num" data-count="60" data-suffix=" fps">0</div><div class="lbl">real-time rendering</div></div>
+      <div class="stat"><div class="num" data-count="100" data-suffix="%">0</div><div class="lbl">self-contained</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CAPABILITIES ============ -->
+<section id="capabilities">
+  <div class="wrap">
+    <div class="reveal">
+      <div class="eyebrow">What I can do</div>
+      <h2 class="sec">More than a pretty canvas</h2>
+      <p class="sec-sub">These demos are the fun part — but the same toolkit ships production
+        code. Here's the broader range of what I bring to a project.</p>
+    </div>
+    <div class="cap-grid">
+      <div class="cap reveal"><div class="ico">⌨️</div><h3>Write &amp; refactor code</h3><p>From a one-line fix to a new module — idiomatic, tested, and matched to your existing style.</p></div>
+      <div class="cap reveal"><div class="ico">🧠</div><h3>Reason across files</h3><p>Trace data flow through a codebase, find the root cause, and explain the why — not just the what.</p></div>
+      <div class="cap reveal"><div class="ico">🛠️</div><h3>Use tools &amp; agents</h3><p>Run commands, search, drive a browser, call APIs and orchestrate sub-agents to get real work done.</p></div>
+      <div class="cap reveal"><div class="ico">🎨</div><h3>Generate UIs</h3><p>Design and build interfaces — like this page — with motion, accessibility and responsive layout baked in.</p></div>
+      <div class="cap reveal"><div class="ico">📊</div><h3>Visualize data</h3><p>Turn raw numbers into charts, simulations and live visualizations that make a point at a glance.</p></div>
+      <div class="cap reveal"><div class="ico">📚</div><h3>Explain systems</h3><p>Document architectures, write clear READMEs, and teach the tricky parts in plain language.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ GALLERY ============ -->
+<section id="gallery">
+  <div class="wrap">
+    <div class="reveal">
+      <div class="eyebrow">Live demos</div>
+      <h2 class="sec">Six toys, running right now</h2>
+      <p class="sec-sub">Each card is a real, interactive simulation that starts when it scrolls
+        into view and pauses when it leaves — so the whole page stays smooth. Click and drag around.</p>
+    </div>
+    <div class="demo-grid" id="demoGrid">
+
+      <div class="demo reveal" data-demo="flow">
+        <div class="canvas-wrap"><span class="tag">Perlin flow field</span><canvas></canvas><span class="overlay-hint">move to disturb</span></div>
+        <div class="meta">
+          <h3>Flow Field</h3>
+          <p>Thousands of particles drift along an invisible vector field driven by Perlin noise — the classic creative-coding look.</p>
+          <div class="links"><a class="chip solid" href="index.html">Open full toy ↗</a></div>
+        </div>
+      </div>
+
+      <div class="demo reveal" data-demo="mandelbrot">
+        <div class="canvas-wrap"><span class="tag">Escape-time fractal</span><canvas></canvas><span class="overlay-hint">click to zoom · dbl-click reset</span></div>
+        <div class="meta">
+          <h3>Mandelbrot Explorer</h3>
+          <p>An infinitely detailed fractal rendered pixel-by-pixel with smooth iteration coloring. Click anywhere to dive deeper.</p>
+          <div class="links"><span class="chip" data-act="mb-reset">Reset view</span></div>
+        </div>
+      </div>
+
+      <div class="demo reveal" data-demo="boids">
+        <div class="canvas-wrap"><span class="tag">Steering behaviors</span><canvas></canvas><span class="overlay-hint">move to lead the flock</span></div>
+        <div class="meta">
+          <h3>Boids Flocking</h3>
+          <p>Each bird follows three simple rules — separation, alignment, cohesion — and emergent flocking appears for free.</p>
+          <div class="links"><span class="chip" data-act="boids-scatter">Scatter</span></div>
+        </div>
+      </div>
+
+      <div class="demo reveal" data-demo="synth">
+        <div class="canvas-wrap"><span class="tag">WebAudio · FFT</span><canvas></canvas><span class="overlay-hint">click keys / press A–K</span>
+          <div class="synth-keys" id="synthKeys"></div>
+        </div>
+        <div class="meta">
+          <h3>Synth &amp; Visualizer</h3>
+          <p>A polyphonic synthesizer built on the Web Audio API, drawn live from its own frequency spectrum. Play a tune.</p>
+          <div class="links"><span class="chip" data-act="synth-wave">Toggle wave</span></div>
+        </div>
+      </div>
+
+      <div class="demo reveal" data-demo="nbody">
+        <div class="canvas-wrap"><span class="tag">Gravity simulation</span><canvas></canvas><span class="overlay-hint">drag to fling a star</span></div>
+        <div class="meta">
+          <h3>N-Body Gravity</h3>
+          <p>Particles fall toward orbiting attractors under an inverse-square law, leaving glowing orbital trails.</p>
+          <div class="links"><span class="chip" data-act="nbody-burst">Big bang</span></div>
+        </div>
+      </div>
+
+      <div class="demo reveal" data-demo="warp">
+        <div class="canvas-wrap"><span class="tag">3D projection</span><canvas></canvas><span class="overlay-hint">move to steer</span></div>
+        <div class="meta">
+          <h3>Starfield Warp</h3>
+          <p>A perspective-projected starfield streaking past at warp speed — pure trigonometry, no 3D library.</p>
+          <div class="links"><span class="chip" data-act="warp-boost">Hyperdrive</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOW IT'S MADE ============ -->
+<section id="made">
+  <div class="wrap">
+    <div class="reveal">
+      <div class="eyebrow">How it's made</div>
+      <h2 class="sec">The ideas behind the pixels</h2>
+      <p class="sec-sub">Every demo is a small, readable module. The interesting techniques in one place:</p>
+    </div>
+    <div class="made-grid">
+      <div class="made reveal"><h4>Vector fields from noise</h4><p>Map each point in space to an angle via <code>Perlin(x·s, y·s + t)</code>. Step particles along it and they trace smooth, organic currents.</p></div>
+      <div class="made reveal"><h4>Escape-time fractals</h4><p>Iterate <code>z → z² + c</code> per pixel; how fast it escapes to infinity decides the color. Smooth shading removes the banding.</p></div>
+      <div class="made reveal"><h4>Emergent flocking</h4><p>Three local rules — <code>separation</code>, <code>alignment</code>, <code>cohesion</code> — with no leader produce lifelike swarm motion.</p></div>
+      <div class="made reveal"><h4>Sound from math</h4><p>The Web Audio API turns oscillators into notes; an <code>AnalyserNode</code> hands back the live FFT we paint as bars.</p></div>
+      <div class="made reveal"><h4>Newtonian gravity</h4><p>Accumulate an inverse-square pull from each attractor, integrate velocity, and fade the canvas to leave orbital trails.</p></div>
+      <div class="made reveal"><h4>Perspective by hand</h4><p>Project 3D stars to 2D with <code>x' = x / z</code>. Shrinking <code>z</code> each frame makes them rush toward the viewer.</p></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="brand"><span class="dot"></span> Capabilities Showcase</div>
+    <p>Hand-built with Claude Code — one <code style="color:var(--accent3)">.html</code> file, no dependencies, no network.</p>
+    <p style="margin-top:8px"><a href="index.html">Flow Field toy</a> · <a href="#gallery">Back to demos</a></p>
+  </div>
+</footer>
+
+<div id="globalFps"><b id="fpsVal">60</b> fps</div>
+
+<script>
+"use strict";
+
+/* =========================================================================
+   Shared helpers
+   ========================================================================= */
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const DPR = Math.min(window.devicePixelRatio || 1, 2);
+const TAU = Math.PI * 2;
+const rand = (a = 1, b) => (b === undefined ? Math.random() * a : a + Math.random() * (b - a));
+
+/* size a canvas to its display box in device pixels */
+function fit(canvas) {
+  const r = canvas.getBoundingClientRect();
+  const w = Math.max(1, Math.floor(r.width * DPR));
+  const h = Math.max(1, Math.floor(r.height * DPR));
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  return { w, h };
+}
+
+/* Perlin noise (improved, 2D slice) — shared by hero + flow field */
+const Perlin = (() => {
+  const p = new Uint8Array(512), perm = [...Array(256).keys()];
+  let s = (Date.now() % 2147483647) || 1;
+  const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let i = 255; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; [perm[i], perm[j]] = [perm[j], perm[i]]; }
+  for (let i = 0; i < 512; i++) p[i] = perm[i & 255];
+  const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
+  const lerp = (a, b, t) => a + t * (b - a);
+  const grad = (h, x, y) => ((h & 1) ? -x : x) + ((h & 2) ? -y : y);
+  return (x, y) => {
+    const X = Math.floor(x) & 255, Y = Math.floor(y) & 255;
+    x -= Math.floor(x); y -= Math.floor(y);
+    const u = fade(x), v = fade(y), A = p[X] + Y, B = p[X + 1] + Y;
+    return lerp(lerp(grad(p[A], x, y), grad(p[B], x - 1, y), u),
+                lerp(grad(p[A + 1], x, y - 1), grad(p[B + 1], x - 1, y - 1), u), v);
+  };
+})();
+
+/* =========================================================================
+   Demo registry — each returns { start, stop, frame, resize, ... }
+   A demo exposes frame(dt) and is driven by the shared scheduler so we can
+   pause off-screen canvases for performance.
+   ========================================================================= */
+const demos = {};
+
+/* ---- Hero ambient: constellation network ---- */
+function initHero(canvas) {
+  const ctx = canvas.getContext("2d");
+  let w, h, pts = [], mouse = { x: -1e4, y: -1e4 };
+  function resize() {
+    const d = fit(canvas); w = d.w; h = d.h;
+    const n = Math.min(120, Math.floor((w * h) / (26000 * DPR)));
+    pts = Array.from({ length: n }, () => ({
+      x: rand(w), y: rand(h), vx: rand(-0.25, 0.25) * DPR, vy: rand(-0.25, 0.25) * DPR
+    }));
+  }
+  addEventListener("pointermove", e => { mouse.x = e.clientX * DPR; mouse.y = e.clientY * DPR; });
+  function frame() {
+    ctx.clearRect(0, 0, w, h);
+    for (const a of pts) {
+      a.x += a.vx; a.y += a.vy;
+      if (a.x < 0 || a.x > w) a.vx *= -1;
+      if (a.y < 0 || a.y > h) a.vy *= -1;
+      const dx = a.x - mouse.x, dy = a.y - mouse.y, d2 = dx * dx + dy * dy, R = 150 * DPR;
+      if (d2 < R * R) { const d = Math.sqrt(d2) || 1; a.x += (dx / d) * 1.4; a.y += (dy / d) * 1.4; }
+    }
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i];
+      for (let j = i + 1; j < pts.length; j++) {
+        const b = pts[j], dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy, L = 130 * DPR;
+        if (d2 < L * L) {
+          const o = (1 - Math.sqrt(d2) / L) * 0.5;
+          ctx.strokeStyle = `rgba(124,156,255,${o})`; ctx.lineWidth = DPR;
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        }
+      }
+      ctx.fillStyle = "rgba(167,188,255,0.85)";
+      ctx.beginPath(); ctx.arc(a.x, a.y, 1.6 * DPR, 0, TAU); ctx.fill();
+    }
+  }
+  resize(); addEventListener("resize", resize);
+  return { frame, resize, always: true };
+}
+
+/* ---- Flow Field preview ---- */
+function initFlow(canvas) {
+  const ctx = canvas.getContext("2d", { alpha: false });
+  const cols = ["#39d3ff", "#5b8cff", "#a05bff", "#ff5bc4"].map(hexRgb);
+  let w, h, parts = [], z = 0, mouse = { x: -1e4, y: -1e4, on: false };
+  function reset() { const d = fit(canvas); w = d.w; h = d.h; ctx.fillStyle = "#05060a"; ctx.fillRect(0, 0, w, h);
+    parts = Array.from({ length: Math.floor(w * h / (1600 * DPR)) }, mk); }
+  function mk() { return { x: rand(w), y: rand(h), life: rand(160), c: (rand(4)) | 0 }; }
+  const wrap = canvas.parentElement;
+  wrap.addEventListener("pointermove", e => { const r = canvas.getBoundingClientRect();
+    mouse.x = (e.clientX - r.left) * DPR; mouse.y = (e.clientY - r.top) * DPR; mouse.on = true; });
+  wrap.addEventListener("pointerleave", () => mouse.on = false);
+  function frame() {
+    ctx.fillStyle = "rgba(5,6,10,0.08)"; ctx.fillRect(0, 0, w, h);
+    ctx.globalCompositeOperation = "lighter"; z += 0.0012;
+    for (const pt of parts) {
+      const px = pt.x, py = pt.y;
+      const ang = Perlin(pt.x * 0.0022, pt.y * 0.0022 + z) * Math.PI * 3;
+      let vx = Math.cos(ang) * 1.5 * DPR, vy = Math.sin(ang) * 1.5 * DPR;
+      if (mouse.on) { const dx = pt.x - mouse.x, dy = pt.y - mouse.y, R = 90 * DPR, d2 = dx * dx + dy * dy;
+        if (d2 < R * R) { const d = Math.sqrt(d2) || 1, f = (1 - d / R) * 4; vx += dx / d * f; vy += dy / d * f; } }
+      pt.x += vx; pt.y += vy; pt.life--;
+      if (pt.x < 0 || pt.x > w || pt.y < 0 || pt.y > h || pt.life < 0) { Object.assign(pt, mk()); continue; }
+      const [r, g, b] = cols[pt.c];
+      ctx.strokeStyle = `rgba(${r},${g},${b},0.5)`; ctx.lineWidth = DPR;
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(pt.x, pt.y); ctx.stroke();
+    }
+    ctx.globalCompositeOperation = "source-over";
+  }
+  reset();
+  return { frame, resize: reset };
+}
+function hexRgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+
+/* ---- Mandelbrot explorer ---- */
+function initMandelbrot(canvas) {
+  const ctx = canvas.getContext("2d");
+  let w, h, img, view = { cx: -0.75, cy: 0, scale: 3.2 }, maxIter = 90, dirty = true;
+  function resize() { const d = fit(canvas); w = d.w; h = d.h; img = ctx.createImageData(w, h); dirty = true; }
+  function render() {
+    const data = img.data, aspect = w / h;
+    const sx = view.scale, sy = view.scale / aspect;
+    for (let py = 0; py < h; py++) {
+      const y0 = view.cy + (py / h - 0.5) * sy;
+      for (let px = 0; px < w; px++) {
+        const x0 = view.cx + (px / w - 0.5) * sx;
+        let x = 0, y = 0, i = 0, x2 = 0, y2 = 0;
+        while (x2 + y2 <= 4 && i < maxIter) { y = 2 * x * y + y0; x = x2 - y2 + x0; x2 = x * x; y2 = y * y; i++; }
+        const o = (py * w + px) * 4;
+        if (i === maxIter) { data[o] = data[o + 1] = data[o + 2] = 6; }
+        else {
+          const m = (i - Math.log2(Math.log2(x2 + y2 + 1e-9) + 1e-9)) / maxIter;
+          const t = Math.sqrt(Math.max(0, m));
+          data[o]     = 9 + 255 * Math.min(1, Math.max(0, 1.4 * t - 0.2));
+          data[o + 1] = 12 + 220 * Math.min(1, Math.max(0, 1.6 * t - 0.5));
+          data[o + 2] = 40 + 215 * Math.min(1, Math.max(0, 1.1 * t + 0.1) * (1 - t * 0.4));
+        }
+        data[o + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+  function frame() { if (dirty) { render(); dirty = false; } }
+  canvas.addEventListener("click", e => {
+    const r = canvas.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width - 0.5, py = (e.clientY - r.top) / r.height - 0.5;
+    view.cx += px * view.scale; view.cy += py * (view.scale / (w / h));
+    view.scale *= 0.45; maxIter = Math.min(420, maxIter + 28); dirty = true;
+  });
+  canvas.addEventListener("dblclick", () => reset());
+  function reset() { view = { cx: -0.75, cy: 0, scale: 3.2 }; maxIter = 90; dirty = true; }
+  resize();
+  return { frame, resize, act: { "mb-reset": reset } };
+}
+
+/* ---- Boids flocking ---- */
+function initBoids(canvas) {
+  const ctx = canvas.getContext("2d");
+  let w, h, flock = [], mouse = { x: -1e4, y: -1e4, on: false };
+  function resize() { const d = fit(canvas); w = d.w; h = d.h;
+    const n = Math.min(140, Math.floor(w * h / (9000 * DPR)));
+    if (flock.length !== n) flock = Array.from({ length: n }, () => ({
+      x: rand(w), y: rand(h), vx: rand(-1, 1), vy: rand(-1, 1) })); }
+  const wrap = canvas.parentElement;
+  wrap.addEventListener("pointermove", e => { const r = canvas.getBoundingClientRect();
+    mouse.x = (e.clientX - r.left) * DPR; mouse.y = (e.clientY - r.top) * DPR; mouse.on = true; });
+  wrap.addEventListener("pointerleave", () => mouse.on = false);
+  function frame() {
+    ctx.fillStyle = "rgba(5,6,10,0.28)"; ctx.fillRect(0, 0, w, h);
+    const R = 46 * DPR, R2 = R * R, sep = 22 * DPR, sep2 = sep * sep, maxV = 2.6 * DPR;
+    for (const b of flock) {
+      let ax = 0, ay = 0, cx = 0, cy = 0, sx = 0, sy = 0, n = 0;
+      for (const o of flock) {
+        if (o === b) continue;
+        const dx = o.x - b.x, dy = o.y - b.y, d2 = dx * dx + dy * dy;
+        if (d2 < R2) { ax += o.vx; ay += o.vy; cx += o.x; cy += o.y; n++;
+          if (d2 < sep2 && d2 > 0) { sx -= dx / d2; sy -= dy / d2; } }
+      }
+      if (n) { b.vx += ((ax / n) - b.vx) * 0.05 + ((cx / n - b.x)) * 0.0009 + sx * 12;
+               b.vy += ((ay / n) - b.vy) * 0.05 + ((cy / n - b.y)) * 0.0009 + sy * 12; }
+      if (mouse.on) { const dx = mouse.x - b.x, dy = mouse.y - b.y, d = Math.hypot(dx, dy) || 1;
+        b.vx += dx / d * 0.06; b.vy += dy / d * 0.06; }
+      const sp = Math.hypot(b.vx, b.vy); if (sp > maxV) { b.vx = b.vx / sp * maxV; b.vy = b.vy / sp * maxV; }
+      b.x += b.vx; b.y += b.vy;
+      if (b.x < 0) b.x += w; if (b.x > w) b.x -= w; if (b.y < 0) b.y += h; if (b.y > h) b.y -= h;
+      const a = Math.atan2(b.vy, b.vx), s = 5 * DPR;
+      ctx.fillStyle = "#7cc9ff";
+      ctx.beginPath();
+      ctx.moveTo(b.x + Math.cos(a) * s * 1.6, b.y + Math.sin(a) * s * 1.6);
+      ctx.lineTo(b.x + Math.cos(a + 2.5) * s, b.y + Math.sin(a + 2.5) * s);
+      ctx.lineTo(b.x + Math.cos(a - 2.5) * s, b.y + Math.sin(a - 2.5) * s);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  function scatter() { for (const b of flock) { b.vx = rand(-6, 6); b.vy = rand(-6, 6); } }
+  resize();
+  return { frame, resize, act: { "boids-scatter": scatter } };
+}
+
+/* ---- Synth + visualizer ---- */
+function initSynth(canvas) {
+  const ctx2d = canvas.getContext("2d");
+  let w, h, audio, analyser, freqData, master, showWave = false;
+  const notes = [261.63, 293.66, 329.63, 349.23, 392.0, 440.0, 493.88, 523.25];
+  const keymap = { a: 0, s: 1, d: 2, f: 3, g: 4, h: 5, j: 6, k: 7 };
+  const keysEl = document.getElementById("synthKeys");
+  notes.forEach((_, i) => { const k = document.createElement("div"); k.className = "key"; k.dataset.i = i; keysEl.appendChild(k); });
+  function resize() { const d = fit(canvas); w = d.w; h = d.h; }
+  function ensure() {
+    if (audio) return;
+    audio = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audio.createAnalyser(); analyser.fftSize = 256;
+    freqData = new Uint8Array(analyser.frequencyBinCount);
+    master = audio.createGain(); master.gain.value = 0.5;
+    master.connect(analyser); analyser.connect(audio.destination);
+  }
+  function play(i) {
+    ensure(); if (audio.state === "suspended") audio.resume();
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.type = "sawtooth"; o.frequency.value = notes[i];
+    const t = audio.currentTime;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.3, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0008, t + 0.9);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.95);
+    const el = keysEl.children[i]; el.classList.add("down"); setTimeout(() => el.classList.remove("down"), 160);
+  }
+  keysEl.addEventListener("pointerdown", e => { if (e.target.dataset.i) play(+e.target.dataset.i); });
+  addEventListener("keydown", e => { if (!e.repeat && e.key in keymap && onScreen) play(keymap[e.key]); });
+  let onScreen = false;
+  function frame() {
+    ctx2d.fillStyle = "#05060a"; ctx2d.fillRect(0, 0, w, h);
+    if (!analyser) {
+      ctx2d.fillStyle = "rgba(154,160,180,0.7)"; ctx2d.font = `${13 * DPR}px ui-sans-serif`;
+      ctx2d.textAlign = "center"; ctx2d.fillText("▶ click a key to start sound", w / 2, h / 2);
+      return;
+    }
+    if (showWave) {
+      analyser.getByteTimeDomainData(freqData);
+      ctx2d.lineWidth = 2 * DPR; ctx2d.strokeStyle = "#39d3ff"; ctx2d.beginPath();
+      for (let i = 0; i < freqData.length; i++) { const x = i / freqData.length * w, y = (freqData[i] / 255) * h;
+        i ? ctx2d.lineTo(x, y) : ctx2d.moveTo(x, y); }
+      ctx2d.stroke();
+    } else {
+      analyser.getByteFrequencyData(freqData);
+      const n = freqData.length, bw = w / n;
+      for (let i = 0; i < n; i++) {
+        const v = freqData[i] / 255, bh = v * h * 0.92;
+        const g = ctx2d.createLinearGradient(0, h, 0, h - bh);
+        g.addColorStop(0, "#5b8cff"); g.addColorStop(1, "#ff5bc4");
+        ctx2d.fillStyle = g; ctx2d.fillRect(i * bw, h - bh, bw - DPR, bh);
+      }
+    }
+  }
+  resize();
+  return { frame, resize,
+    onVisible: v => onScreen = v,
+    act: { "synth-wave": () => showWave = !showWave } };
+}
+
+/* ---- N-body gravity ---- */
+function initNBody(canvas) {
+  const ctx = canvas.getContext("2d");
+  let w, h, parts = [], attractors = [], t = 0, drag = null;
+  function resize() { const d = fit(canvas); w = d.w; h = d.h;
+    ctx.fillStyle = "#05060a"; ctx.fillRect(0, 0, w, h);
+    if (!parts.length) seed();
+    attractors = [ { x: w * 0.5, y: h * 0.5, m: 1400 } ]; }
+  function seed() { parts = Array.from({ length: 260 }, () => {
+    const a = rand(TAU), r = rand(60, 220) * DPR;
+    return { x: w / 2 + Math.cos(a) * r, y: h / 2 + Math.sin(a) * r,
+      vx: Math.cos(a + Math.PI / 2) * 1.4, vy: Math.sin(a + Math.PI / 2) * 1.4 }; }); }
+  const wrap = canvas.parentElement;
+  function pos(e) { const r = canvas.getBoundingClientRect();
+    return { x: (e.clientX - r.left) * DPR, y: (e.clientY - r.top) * DPR }; }
+  wrap.addEventListener("pointerdown", e => { drag = { ...pos(e), sx: 0, sy: 0 }; const p = pos(e); drag.sx = p.x; drag.sy = p.y; });
+  wrap.addEventListener("pointerup", e => { if (!drag) return; const p = pos(e);
+    parts.push({ x: drag.sx, y: drag.sy, vx: (p.x - drag.sx) * 0.04, vy: (p.y - drag.sy) * 0.04 });
+    if (parts.length > 520) parts.shift(); drag = null; });
+  function frame() {
+    ctx.fillStyle = "rgba(5,6,10,0.16)"; ctx.fillRect(0, 0, w, h);
+    t += 0.01;
+    attractors[0] && (attractors[0].x = w / 2 + Math.cos(t) * w * 0.18, attractors[0].y = h / 2 + Math.sin(t * 1.3) * h * 0.16);
+    ctx.globalCompositeOperation = "lighter";
+    for (const a of attractors) {
+      ctx.fillStyle = "rgba(255,200,120,0.9)";
+      ctx.beginPath(); ctx.arc(a.x, a.y, 4 * DPR, 0, TAU); ctx.fill();
+    }
+    for (const p of parts) {
+      for (const a of attractors) {
+        const dx = a.x - p.x, dy = a.y - p.y, d2 = dx * dx + dy * dy + 400;
+        const f = a.m / d2; p.vx += dx * f * 0.02; p.vy += dy * f * 0.02;
+      }
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < -50 || p.x > w + 50 || p.y < -50 || p.y > h + 50) { p.x = rand(w); p.y = rand(h); p.vx = p.vy = 0; }
+      const sp = Math.min(1, Math.hypot(p.vx, p.vy) / 6);
+      ctx.fillStyle = `rgba(${120 + sp * 135|0},${156 - sp * 60|0},255,0.9)`;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 1.5 * DPR, 0, TAU); ctx.fill();
+    }
+    ctx.globalCompositeOperation = "source-over";
+  }
+  function burst() { for (const p of parts) { const a = rand(TAU); p.vx += Math.cos(a) * 6; p.vy += Math.sin(a) * 6; } }
+  resize();
+  return { frame, resize, act: { "nbody-burst": burst } };
+}
+
+/* ---- Starfield warp ---- */
+function initWarp(canvas) {
+  const ctx = canvas.getContext("2d");
+  let w, h, stars = [], speed = 1, steer = { x: 0, y: 0 };
+  function resize() { const d = fit(canvas); w = d.w; h = d.h;
+    stars = Array.from({ length: 500 }, mk); }
+  function mk() { return { x: rand(-w, w), y: rand(-h, h), z: rand(1, w), pz: 0 }; }
+  const wrap = canvas.parentElement;
+  wrap.addEventListener("pointermove", e => { const r = canvas.getBoundingClientRect();
+    steer.x = ((e.clientX - r.left) / r.width - 0.5) * w * 0.5;
+    steer.y = ((e.clientY - r.top) / r.height - 0.5) * h * 0.5; });
+  function frame() {
+    ctx.fillStyle = "rgba(5,6,10,0.4)"; ctx.fillRect(0, 0, w, h);
+    const cx = w / 2 + steer.x * 0.3, cy = h / 2 + steer.y * 0.3;
+    for (const s of stars) {
+      s.pz = s.z; s.z -= 6 * speed;
+      if (s.z < 1) { Object.assign(s, mk()); s.z = w; s.pz = w; }
+      const k = w / s.z, kx = w / s.pz;
+      const x = cx + s.x * k, y = cy + s.y * k;
+      const px = cx + s.x * kx, py = cy + s.y * kx;
+      const o = Math.min(1, (1 - s.z / w) * 1.4);
+      ctx.strokeStyle = `rgba(${180 + o * 75|0},${200 + o * 55|0},255,${o})`;
+      ctx.lineWidth = Math.max(DPR, o * 2.4 * DPR);
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(x, y); ctx.stroke();
+    }
+    speed += (1 - speed) * 0.04;
+  }
+  function boost() { speed = 7; }
+  resize();
+  return { frame, resize, act: { "warp-boost": boost } };
+}
+
+/* =========================================================================
+   Scheduler: one rAF loop drives every active demo. IntersectionObserver
+   marks demos visible/invisible so off-screen ones don't burn cycles.
+   ========================================================================= */
+const active = new Set();
+const builders = { flow: initFlow, mandelbrot: initMandelbrot, boids: initBoids,
+                   synth: initSynth, nbody: initNBody, warp: initWarp };
+const instances = {};
+
+// hero is always on
+const hero = initHero(document.getElementById("heroCanvas"));
+active.add(hero);
+
+// build gallery demos + wire action chips
+document.querySelectorAll(".demo").forEach(card => {
+  const name = card.dataset.demo;
+  const canvas = card.querySelector("canvas");
+  const inst = builders[name](canvas);
+  instances[name] = inst;
+  card.querySelectorAll("[data-act]").forEach(btn => {
+    const fn = inst.act && inst.act[btn.dataset.act];
+    if (fn) btn.addEventListener("click", fn);
+  });
+});
+
+// visibility -> activate/deactivate
+const io = new IntersectionObserver(entries => {
+  for (const e of entries) {
+    const name = e.target.dataset.demo;
+    const inst = instances[name];
+    if (!inst) continue;
+    if (e.isIntersecting) { active.add(inst); inst.onVisible && inst.onVisible(true); }
+    else { active.delete(inst); inst.onVisible && inst.onVisible(false); }
+  }
+}, { rootMargin: "120px" });
+document.querySelectorAll(".demo").forEach(c => io.observe(c));
+
+// resize all on window resize (debounced)
+let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => {
+  hero.resize && hero.resize();
+  Object.values(instances).forEach(i => i.resize && i.resize());
+}, 150); });
+
+// master loop
+let last = performance.now(), fpsEl = document.getElementById("fpsVal"), fpsSmooth = 60, acc = 0;
+function loop(now) {
+  const dt = now - last; last = now;
+  fpsSmooth += ((1000 / Math.max(dt, 1)) - fpsSmooth) * 0.07;
+  if ((acc += dt) > 450) { acc = 0; fpsEl.textContent = Math.round(fpsSmooth); }
+  if (!reducedMotion) for (const inst of active) inst.frame(dt);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+if (reducedMotion) { // render a single static frame of everything
+  hero.frame(0); Object.values(instances).forEach(i => i.frame(0));
+}
+
+/* =========================================================================
+   Page chrome: nav shadow, scroll reveals, count-up stats
+   ========================================================================= */
+const nav = document.getElementById("nav");
+addEventListener("scroll", () => nav.classList.toggle("scrolled", scrollY > 30), { passive: true });
+
+const revealIO = new IntersectionObserver((entries, obs) => {
+  for (const e of entries) if (e.isIntersecting) {
+    // stagger children within a grid
+    const sibs = [...e.target.parentElement.children].filter(c => c.classList.contains("reveal"));
+    const idx = sibs.indexOf(e.target);
+    e.target.style.transitionDelay = (Math.max(0, idx) * 70) + "ms";
+    e.target.classList.add("in"); obs.unobserve(e.target);
+  }
+}, { threshold: 0.12 });
+document.querySelectorAll(".reveal").forEach(el => revealIO.observe(el));
+
+const countIO = new IntersectionObserver((entries, obs) => {
+  for (const e of entries) if (e.isIntersecting) {
+    const el = e.target, target = +el.dataset.count, suffix = el.dataset.suffix || "";
+    const t0 = performance.now(), dur = 1100;
+    (function tick(t) {
+      const p = Math.min(1, (t - t0) / dur), e2 = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(target * e2) + suffix;
+      if (p < 1) requestAnimationFrame(tick);
+    })(t0);
+    obs.unobserve(el);
+  }
+}, { threshold: 0.5 });
+document.querySelectorAll("[data-count]").forEach(el => countIO.observe(el));
+</script>
+</body>
+</html>

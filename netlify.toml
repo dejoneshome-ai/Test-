@@ -1,0 +1,10 @@
+# Static, dependency-free site — no build step needed.
+# Serve the capabilities showcase at the site root while keeping the
+# Flow Field toy reachable at /index.html (and via the showcase's links).
+[build]
+  publish = "."
+
+[[redirects]]
+  from = "/"
+  to = "/showcase.html"
+  status = 200
