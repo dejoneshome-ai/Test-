@@ -71,8 +71,11 @@
   .brand-pin .pulse{transform-origin:center;animation:pinpulse 2.4s ease-in-out infinite;}
   @keyframes pinpulse{0%,100%{opacity:.25;r:3.4px;}50%{opacity:.9;r:1.6px;}}
   .nav-links{display:flex;gap:26px;align-items:center;}
-  .nav-links a{font-size:14px;font-weight:600;color:var(--ink-soft);transition:color .15s;}
+  .nav-links a{font-size:14px;font-weight:600;color:var(--ink-soft);transition:color .15s;position:relative;}
   .nav-links a:hover{color:var(--red);}
+  .nav-links a::after{content:"";position:absolute;left:0;right:0;bottom:-5px;height:2px;background:var(--red);
+    transform:scaleX(0);transform-origin:left;transition:transform .32s cubic-bezier(.22,1,.36,1);}
+  .nav-links a:hover::after{transform:scaleX(1);}
   .nav-actions{display:flex;align-items:center;gap:16px;}
   .nav-pay{font-size:12.5px;font-weight:700;color:var(--red-deep);border-bottom:1px dashed var(--red-deep);}
   .nav-pay:hover{color:var(--ink);}
@@ -83,8 +86,14 @@
     padding:14px 24px;border-radius:999px;border:2px solid var(--red);cursor:pointer;
     transition:transform .16s ease, box-shadow .16s ease, background .16s ease, color .16s ease;
     display:inline-flex;align-items:center;gap:9px;white-space:nowrap;
+    position:relative;overflow:hidden;
   }
   .btn svg{transition:transform .16s ease;}
+  /* light sheen sweep on hover */
+  .btn::after{content:"";position:absolute;top:0;left:-130%;width:55%;height:100%;pointer-events:none;
+    background:linear-gradient(100deg,transparent,rgba(255,255,255,.42),transparent);transform:skewX(-18deg);}
+  .btn:hover::after{animation:sheen .85s ease;}
+  @keyframes sheen{to{left:150%;}}
   .btn-primary{background:var(--red);color:#fff;box-shadow:0 10px 22px -10px rgba(180,20,15,.8);}
   .btn-primary:hover{transform:translateY(-2px);box-shadow:0 16px 30px -12px rgba(180,20,15,.9);}
   .btn-primary:hover svg{transform:translateX(3px);}
@@ -110,6 +119,10 @@
   h1 .ul svg{position:absolute;left:0;right:0;bottom:-0.18em;width:100%;height:0.34em;color:var(--gold);}
   h1 .ul svg path{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1s ease .6s forwards;}
   @keyframes draw{to{stroke-dashoffset:0;}}
+  /* headline word-by-word rise */
+  .word-mask{display:inline-block;overflow:hidden;vertical-align:bottom;padding:0 .04em .1em;}
+  .word{display:inline-block;transform:translateY(118%);transition:transform .9s cubic-bezier(.16,1,.3,1);}
+  .words-in .word{transform:translateY(0);}
   .lede{font-size:clamp(17px,1.6vw,19px);color:var(--ink-soft);max-width:500px;margin-bottom:26px;}
 
   /* hero tool control */
@@ -137,7 +150,8 @@
   .trust svg{color:var(--red);}
 
   /* ---------------- PHONE DEVICE ---------------- */
-  .stage{display:flex;justify-content:center;align-items:center;perspective:1400px;}
+  .stage{display:flex;justify-content:center;align-items:center;perspective:1400px;animation:floaty 6.5s ease-in-out infinite;}
+  @keyframes floaty{0%,100%{transform:translateY(0);}50%{transform:translateY(-12px);}}
   .device{
     position:relative;width:300px;aspect-ratio:300/612;
     background:linear-gradient(160deg,#3a221a,#1a0f0b);
@@ -220,12 +234,15 @@
     background:var(--ink);color:var(--paper);font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
     letter-spacing:.05em;text-transform:uppercase;padding:7px 11px;border-radius:9px;
     box-shadow:0 14px 26px -12px rgba(0,0,0,.6);transform:rotate(4deg);
-    display:flex;align-items:center;gap:6px;
+    display:flex;align-items:center;gap:6px;animation:badgebob 4.5s ease-in-out infinite;
   }
+  @keyframes badgebob{0%,100%{transform:rotate(4deg) translateY(0);}50%{transform:rotate(6.5deg) translateY(-5px);}}
   .device-badge .live-dot{width:7px;height:7px;border-radius:50%;background:var(--gold);}
 
   /* ---------------- MARQUEE ---------------- */
-  .marquee{margin-top:34px;background:var(--ink);color:var(--paper);overflow:hidden;border-top:1px solid rgba(255,255,255,.06);}
+  .marquee{margin-top:34px;background:var(--ink);color:var(--paper);overflow:hidden;border-top:1px solid rgba(255,255,255,.06);
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent);
+    mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent);}
   .marquee-row{display:flex;white-space:nowrap;}
   .marquee-track{display:inline-flex;align-items:center;gap:34px;padding:15px 17px;animation:scrollx 38s linear infinite;}
   .marquee-row.rev .marquee-track{animation-direction:reverse;animation-duration:46px;}
@@ -243,9 +260,19 @@
   .sec-head{max-width:620px;margin-bottom:42px;}
   .sec-head p{color:var(--ink-soft);font-size:17px;margin-top:14px;}
 
-  /* reveal-on-scroll */
-  .reveal{opacity:0;transform:translateY(26px);transition:opacity .7s cubic-bezier(.22,1,.36,1), transform .7s cubic-bezier(.22,1,.36,1);}
-  .reveal.in{opacity:1;transform:none;}
+  /* reveal-on-scroll — sleek blur + rise */
+  .reveal{opacity:0;transform:translateY(30px);filter:blur(10px);
+    transition:opacity .85s cubic-bezier(.22,1,.36,1), transform .9s cubic-bezier(.22,1,.36,1), filter .85s ease;}
+  .reveal.in{opacity:1;transform:none;filter:blur(0);}
+  /* staggered children (delays set in JS) */
+  .reveal[data-stagger]>*{opacity:0;transform:translateY(26px);filter:blur(8px);
+    transition:opacity .75s cubic-bezier(.22,1,.36,1), transform .8s cubic-bezier(.22,1,.36,1), filter .75s ease;}
+  .reveal[data-stagger].in>*{opacity:1;transform:none;filter:blur(0);}
+
+  /* scroll progress bar */
+  .scroll-progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:100;
+    background:linear-gradient(90deg,var(--red),var(--gold));box-shadow:0 0 12px rgba(180,20,15,.5);
+    transition:width .08s linear;}
 
   /* ---------------- STATS ---------------- */
   .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:18px;overflow:hidden;}
@@ -420,6 +447,7 @@
   <div class="glow g3"></div>
 </div>
 <div class="bg-grain" aria-hidden="true"></div>
+<div class="scroll-progress" id="prog" aria-hidden="true"></div>
 
 <!-- NAV -->
 <div class="nav" id="nav">
@@ -446,14 +474,14 @@
 <div class="wrap">
   <section class="hero" style="padding-top:30px;">
     <div>
-      <span class="kicker"><span class="live-dot"></span> Free 60-second visibility check</span>
+      <span class="kicker reveal"><span class="live-dot"></span> Free 60-second visibility check</span>
       <h1 class="display">See your shop the way a
         <span class="ul">new customer
           <svg viewBox="0 0 200 12" preserveAspectRatio="none" fill="none"><path d="M2 8C40 3 160 3 198 7" stroke="currentColor" stroke-width="4" stroke-linecap="round" pathLength="1"/></svg>
         </span> does.</h1>
-      <p class="lede">Most local businesses have no idea what shows up when someone searches their name. Type yours in — watch what a customer actually sees — then get it sorted for £75 if you want it done properly.</p>
+      <p class="lede reveal" style="transition-delay:.12s">Most local businesses have no idea what shows up when someone searches their name. Type yours in — watch what a customer actually sees — then get it sorted for £75 if you want it done properly.</p>
 
-      <div class="tool" id="check">
+      <div class="tool reveal" id="check" style="transition-delay:.2s">
         <div class="tool-fields">
           <div class="tool-field">
             <label for="bizName">Business name</label>
@@ -471,7 +499,7 @@
         <p class="tool-note" id="toolNote">Under a minute. No card, no signup — the result plays out on the phone.</p>
       </div>
 
-      <div class="trust">
+      <div class="trust reveal" style="transition-delay:.28s">
         <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>No card, no signup</span>
         <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Report in 48 hours</span>
         <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Pay only if happy</span>
@@ -479,7 +507,7 @@
     </div>
 
     <!-- PHONE -->
-    <div class="stage">
+    <div class="stage reveal" style="transition-delay:.15s">
       <div class="device" id="device">
         <div class="device-badge"><span class="live-dot"></span> Live preview</div>
         <div class="screen">
@@ -563,7 +591,7 @@
 <!-- STATS -->
 <div class="wrap">
   <section style="padding-top:64px;">
-    <div class="stats reveal">
+    <div class="stats reveal" data-stagger>
       <div class="stat"><div class="num">£0</div><div class="lab">to run your check</div></div>
       <div class="stat"><div class="num"><span data-count="48">0</span>h</div><div class="lab">to your full report</div></div>
       <div class="stat"><div class="num"><span data-count="12">0</span></div><div class="lab">posts written for you</div></div>
@@ -612,7 +640,7 @@
       <p>The free check shows you the gap. This closes it — researched by a real person, specific to your business.</p>
     </div>
     <div class="pack-grid">
-      <ul class="pack-list reveal">
+      <ul class="pack-list reveal" data-stagger>
         <li><span class="num">01</span><span class="pt"><strong>Competitor breakdown</strong>3 to 5 businesses near you — what they charge, how they're reviewed, what they post.</span></li>
         <li><span class="num">02</span><span class="pt"><strong>A month of content</strong>8 to 12 posts written and ready, each with when to post it and what photo to use.</span></li>
         <li><span class="num">03</span><span class="pt"><strong>Three quick wins</strong>Ranked by effort, specific to your business — not generic advice.</span></li>
@@ -643,7 +671,7 @@
       <h2 class="display">The places that make a town.</h2>
       <p>If real people walk into your place, your name is being searched right now — by someone deciding whether to come in, or carry on walking.</p>
     </div>
-    <div class="gallery reveal">
+    <div class="gallery reveal" data-stagger>
       <figure class="gfig"><img src="https://images.unsplash.com/photo-1559925393-8be0ec4767c8?auto=format&fit=crop&w=600&q=80" alt="Outdoor café on a high street" loading="lazy" decoding="async"><figcaption>The corner café</figcaption></figure>
       <figure class="gfig"><img src="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=600&q=80" alt="Barber giving a hot-towel shave" loading="lazy" decoding="async"><figcaption>The barber</figcaption></figure>
       <figure class="gfig"><img src="https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80" alt="Fresh artisan bread from a bakery" loading="lazy" decoding="async"><figcaption>The bakery</figcaption></figure>
@@ -833,20 +861,33 @@
     timers.push(setTimeout(function(){ reveal('Oakwood Café', 'Llanidloes', false); }, 1000));
   });
 
-  // Nav background on scroll
+  // Nav background + top scroll-progress bar
   var nav = $('#nav');
-  function onScroll(){ nav.classList.toggle('scrolled', window.scrollY > 24); }
+  var prog = $('#prog');
+  function onScroll(){
+    nav.classList.toggle('scrolled', window.scrollY > 24);
+    if(prog){
+      var h = document.documentElement;
+      var max = (h.scrollHeight - h.clientHeight) || 1;
+      prog.style.width = Math.min(window.scrollY / max * 100, 100) + '%';
+    }
+  }
   onScroll(); window.addEventListener('scroll', onScroll, { passive:true });
 
-  // Reveal-on-scroll + count-up
+  // Reveal-on-scroll + count-up + staggered children
   if('IntersectionObserver' in window && !reduce){
     var io = new IntersectionObserver(function(entries){
       entries.forEach(function(en){
-        if(en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target);
+        if(en.isIntersecting){
+          if(en.target.hasAttribute('data-stagger')){
+            var kids = en.target.children, d = 0;
+            for(var k=0;k<kids.length;k++){ kids[k].style.transitionDelay = d.toFixed(2)+'s'; d += 0.07; }
+          }
+          en.target.classList.add('in'); io.unobserve(en.target);
           en.target.querySelectorAll && en.target.querySelectorAll('[data-count]').forEach(countUp);
         }
       });
-    }, { threshold: 0.16 });
+    }, { threshold: 0.16, rootMargin: '0px 0px -8% 0px' });
     document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
   } else {
     document.querySelectorAll('.reveal').forEach(function(el){ el.classList.add('in'); });
@@ -864,8 +905,34 @@
     requestAnimationFrame(tick);
   }
 
-  // Subtle pointer tilt on the ticket (fine pointers only)
+  // Headline rises word-by-word out of a mask
+  var h1 = document.querySelector('.hero h1');
+  if(h1 && !reduce){
+    var frag = document.createDocumentFragment(), i = 0;
+    Array.prototype.slice.call(h1.childNodes).forEach(function(node){
+      if(node.nodeType === 3){ // text -> split into words
+        node.textContent.split(/(\s+)/).forEach(function(part){
+          if(/^\s+$/.test(part)){ frag.appendChild(document.createTextNode(part)); }
+          else if(part.length){
+            var m = document.createElement('span'); m.className = 'word-mask';
+            var w = document.createElement('span'); w.className = 'word';
+            w.textContent = part; w.style.transitionDelay = (0.18 + (i++) * 0.06).toFixed(2) + 's';
+            m.appendChild(w); frag.appendChild(m);
+          }
+        });
+      } else { // element (the .ul span) -> animate as one unit
+        var m2 = document.createElement('span'); m2.className = 'word-mask';
+        var w2 = document.createElement('span'); w2.className = 'word';
+        w2.style.transitionDelay = (0.18 + (i++) * 0.06).toFixed(2) + 's';
+        w2.appendChild(node); m2.appendChild(w2); frag.appendChild(m2);
+      }
+    });
+    h1.innerHTML = ''; h1.appendChild(frag);
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){ h1.classList.add('words-in'); }); });
+  }
+
   if(!reduce && window.matchMedia('(pointer:fine)').matches){
+    // Subtle pointer tilt on the ticket
     document.querySelectorAll('.tilt').forEach(function(el){
       el.addEventListener('pointermove', function(e){
         var r = el.getBoundingClientRect();
@@ -875,6 +942,28 @@
       });
       el.addEventListener('pointerleave', function(){ el.style.transform = ''; });
     });
+
+    // Magnetic call-to-action buttons
+    document.querySelectorAll('.btn-primary, .pay-strip .btn, #payBtn').forEach(function(el){
+      el.addEventListener('pointermove', function(e){
+        var r = el.getBoundingClientRect();
+        var x = (e.clientX - r.left - r.width / 2) * 0.3;
+        var y = (e.clientY - r.top - r.height / 2) * 0.4;
+        el.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px)';
+      });
+      el.addEventListener('pointerleave', function(){ el.style.transform = ''; });
+    });
+
+    // Background glows drift with the cursor (very subtle)
+    var glows = document.querySelectorAll('.glow');
+    window.addEventListener('pointermove', function(e){
+      var dx = (e.clientX / window.innerWidth - 0.5);
+      var dy = (e.clientY / window.innerHeight - 0.5);
+      glows.forEach(function(g, idx){
+        var f = (idx + 1) * 14;
+        g.style.transform = 'translate(' + (dx * f).toFixed(1) + 'px,' + (dy * f).toFixed(1) + 'px)';
+      });
+    }, { passive:true });
   }
 })();
 </script>
