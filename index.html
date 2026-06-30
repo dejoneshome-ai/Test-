@@ -410,6 +410,99 @@ td input:focus {
   .container { padding: 0 10px; }
   .card { padding: 16px; }
 }
+
+/* ---- AI Description Helper ---- */
+
+/* The small sparkle button inside each description cell */
+.ai-btn {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 4px 6px;
+  opacity: .55;
+  transition: opacity .15s, background .15s, border-color .15s;
+}
+.ai-btn:hover {
+  opacity: 1;
+  background: rgba(26,86,219,.08);
+  border-color: rgba(26,86,219,.2);
+}
+
+/* Modal overlay — the semi-transparent dark screen behind the pop-up */
+.modal-overlay {
+  display: none;       /* hidden by default */
+  position: fixed;
+  inset: 0;            /* covers the whole screen */
+  background: rgba(0,0,0,.45);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.modal-overlay.open { display: flex; } /* .open makes it appear */
+
+/* The white pop-up box itself */
+.modal-box {
+  background: #fff;
+  border-radius: 14px;
+  padding: 28px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 24px 70px rgba(0,0,0,.28);
+}
+.modal-box h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.modal-box .modal-subtitle {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+/* The box where the AI's suggestion appears */
+.ai-result-box {
+  background: var(--surface);
+  border: 1.5px solid var(--brand);
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.6;
+  margin-top: 16px;
+  display: none;
+}
+.ai-result-box.show { display: block; }
+.ai-result-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--brand);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 6px;
+}
+
+/* Error message area */
+.ai-error-msg {
+  color: var(--danger);
+  font-size: 13px;
+  margin-top: 12px;
+  display: none;
+}
+.ai-error-msg.show { display: block; }
 </style>
 </head>
 <body>
@@ -610,6 +703,53 @@ td input:focus {
 </div><!-- end .container -->
 
 
+<!--
+  AI Description Helper modal
+  ============================
+  This pop-up lets the user type a plain-English note about the job
+  and get a professional description back from Claude AI.
+  It only appears when you click a ✨ button on a row.
+  Clicking the dark background also closes it (handled in JS).
+-->
+<div class="modal-overlay" id="aiModal" onclick="closeAIModalOnOverlay(event)">
+  <div class="modal-box">
+    <h3>✨ AI Description Helper</h3>
+    <p class="modal-subtitle">
+      Describe the job in plain words — AI will suggest professional wording
+      ready to go straight into your quote or invoice.
+    </p>
+
+    <label for="aiPrompt">Your brief note</label>
+    <input type="text" id="aiPrompt"
+           placeholder="e.g. fix leaking pipe under kitchen sink"
+           style="margin-top: 6px;"
+           onkeydown="if(event.key === 'Enter') generateAIDescription()" />
+
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="aiGenerateBtn" onclick="generateAIDescription()">
+        Generate
+      </button>
+      <button class="btn btn-secondary" onclick="closeAIModal()">Cancel</button>
+    </div>
+
+    <!-- The AI's suggested text appears here after generation -->
+    <div class="ai-result-box" id="aiResultBox">
+      <div class="ai-result-label">Suggested description</div>
+      <div id="aiResultText"></div>
+    </div>
+
+    <!-- Error message shown if something goes wrong -->
+    <div class="ai-error-msg" id="aiErrorMsg"></div>
+
+    <!-- Accept / Try Again buttons — only shown after a result arrives -->
+    <div class="modal-actions" id="aiAcceptActions" style="display:none;">
+      <button class="btn btn-primary" onclick="useAIDescription()">&#10003; Use This</button>
+      <button class="btn btn-secondary" onclick="generateAIDescription()">Try Again</button>
+    </div>
+  </div>
+</div>
+
+
 <!-- ============================================================
      JAVASCRIPT (the logic — what makes things actually work)
      ============================================================ -->
@@ -718,10 +858,15 @@ function renderItems() {
     // Note: we use data-id to link inputs back to the item object
     tr.innerHTML = `
       <td class="col-desc">
-        <input type="text" placeholder="e.g. Labour — fix boiler"
-               value="${escHtml(item.desc)}"
-               oninput="updateItem(${item.id}, 'desc', this.value)"
-               style="width:100%" />
+        <div style="display:flex; align-items:center; gap:3px;">
+          <input type="text" placeholder="e.g. Labour — fix boiler"
+                 id="desc-${item.id}"
+                 value="${escHtml(item.desc)}"
+                 oninput="updateItem(${item.id}, 'desc', this.value)"
+                 style="flex:1; min-width:0;" />
+          <button class="ai-btn" onclick="openAIModal(${item.id})"
+                  title="AI description helper">&#10024;</button>
+        </div>
       </td>
       <td class="col-qty">
         <input type="number" min="0" step="0.5" value="${item.qty}"
@@ -921,6 +1066,141 @@ BIZ_FIELDS.forEach(id => {
   document.getElementById(id).addEventListener("blur", saveBusinessDetails);
   // "blur" fires when the user leaves the field (clicks or tabs away)
 });
+
+
+/*
+  ============================================================
+  PART 7 — AI DESCRIPTION HELPER
+  ============================================================
+  How this works end-to-end:
+
+  1. User clicks the ✨ button on a line-item row
+  2. A pop-up modal opens (openAIModal)
+  3. User types a plain-English note and clicks Generate
+  4. The browser sends that note to a small server-side function
+     hosted on Netlify (netlify/functions/ai-describe.js)
+  5. That function calls the Claude AI API using a secret key
+     that lives ONLY on the server — never visible in the browser
+  6. Claude sends back a professional description
+  7. The result is shown in the pop-up
+  8. User clicks "Use This" and it fills in the description field
+  ============================================================
+*/
+
+// Tracks which row the modal was opened for
+let aiTargetItemId = null;
+
+function openAIModal(itemId) {
+  aiTargetItemId = itemId;
+
+  // Pre-fill the prompt box with whatever is already in the description field
+  // so the user can just refine it rather than start from scratch
+  const existingDesc = (items.find(i => i.id === itemId) || {}).desc || "";
+  document.getElementById("aiPrompt").value = existingDesc;
+
+  // Reset modal to its blank state
+  document.getElementById("aiResultBox").classList.remove("show");
+  document.getElementById("aiResultText").textContent = "";
+  document.getElementById("aiErrorMsg").classList.remove("show");
+  document.getElementById("aiErrorMsg").textContent = "";
+  document.getElementById("aiAcceptActions").style.display = "none";
+  const genBtn = document.getElementById("aiGenerateBtn");
+  genBtn.disabled = false;
+  genBtn.textContent = "Generate";
+
+  // Show the modal
+  document.getElementById("aiModal").classList.add("open");
+
+  // Move keyboard focus to the prompt field after the modal is visible
+  setTimeout(() => document.getElementById("aiPrompt").focus(), 60);
+}
+
+function closeAIModal() {
+  document.getElementById("aiModal").classList.remove("open");
+  aiTargetItemId = null;
+}
+
+// Close the modal if the user clicks the dark background around the box
+function closeAIModalOnOverlay(event) {
+  if (event.target === document.getElementById("aiModal")) {
+    closeAIModal();
+  }
+}
+
+async function generateAIDescription() {
+  const prompt = document.getElementById("aiPrompt").value.trim();
+  if (!prompt) {
+    document.getElementById("aiPrompt").focus();
+    return;
+  }
+
+  // Show a loading state while we wait for the AI
+  const genBtn = document.getElementById("aiGenerateBtn");
+  genBtn.disabled = true;
+  genBtn.textContent = "Generating…";
+  document.getElementById("aiResultBox").classList.remove("show");
+  document.getElementById("aiErrorMsg").classList.remove("show");
+  document.getElementById("aiAcceptActions").style.display = "none";
+
+  try {
+    /*
+      We call our Netlify serverless function.
+      "/.netlify/functions/ai-describe" is the URL that Netlify
+      automatically gives to the file netlify/functions/ai-describe.js.
+      This function lives on Netlify's servers, not in the browser —
+      that's how the Claude API key stays secret.
+    */
+    const response = await fetch("/.netlify/functions/ai-describe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt }),
+    });
+
+    // If the server returned an error, read its message and throw it
+    if (!response.ok) {
+      let errMsg = "Something went wrong. Please try again.";
+      try {
+        const errData = await response.json();
+        if (errData.error) errMsg = errData.error;
+      } catch (_) { /* ignore JSON parse errors on error responses */ }
+      throw new Error(errMsg);
+    }
+
+    const data = await response.json();
+    const description = (data.description || "").trim();
+
+    if (!description) {
+      throw new Error("No description was returned. Try rephrasing your note.");
+    }
+
+    // Display the result
+    document.getElementById("aiResultText").textContent = description;
+    document.getElementById("aiResultBox").classList.add("show");
+    document.getElementById("aiAcceptActions").style.display = "flex";
+
+  } catch (err) {
+    document.getElementById("aiErrorMsg").textContent = err.message;
+    document.getElementById("aiErrorMsg").classList.add("show");
+  } finally {
+    // Always restore the button, whether the request succeeded or failed
+    genBtn.disabled = false;
+    genBtn.textContent = "Generate";
+  }
+}
+
+function useAIDescription() {
+  const description = document.getElementById("aiResultText").textContent.trim();
+  if (!description || aiTargetItemId === null) return;
+
+  // Update the item in our data array (this is what drives the PDF)
+  updateItem(aiTargetItemId, "desc", description);
+
+  // Also update the visible input field on screen so the user sees the change immediately
+  const input = document.getElementById("desc-" + aiTargetItemId);
+  if (input) input.value = description;
+
+  closeAIModal();
+}
 
 
 /*
