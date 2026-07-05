@@ -3,16 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>document.documentElement.className+=' js';</script>
 <title>VisibleLocal — websites &amp; online visibility for mid Wales</title>
 <meta name="description" content="VisibleLocal builds websites and sharpens online presence for independent businesses across mid Wales. Start with a free snapshot of what customers see when they search your name, get a £75 personalised Visibility Package, or a full website for £395.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%231E5C3C' d='M12 2a8 8 0 0 0-8 8c0 6 8 12 8 12s8-6 8-12a8 8 0 0 0-8-8z'/%3E%3Ccircle cx='12' cy='10' r='3' fill='%23F8F5EE'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%231E5C3C' d='M12 2a8 8 0 0 0-8 8c0 6 8 12 8 12s8-6 8-12a8 8 0 0 0-8-8z'/%3E%3Ccircle cx='12' cy='10' r='3' fill='%23EFF3EC'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Sans:ital,wght@0,400..700;1,400..600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --paper:#F8F5EE;
-    --paper-2:#EFEADD;
+    --bg:#EFF3EC;
+    --surface:#E4EBE1;
     --ink:#16251D;
     --soft:#42564B;
     --muted:#5F7268;
@@ -30,9 +31,10 @@
   *{margin:0;padding:0;box-sizing:border-box;}
   html{scroll-behavior:smooth;}
   body{
-    background:var(--paper);
+    background:var(--bg);
     color:var(--ink);
-    font-family:'Instrument Sans',sans-serif;
+    font-family:'Bricolage Grotesque',sans-serif;
+    font-optical-sizing:auto;
     line-height:1.6;
     -webkit-font-smoothing:antialiased;
     overflow-x:hidden;
@@ -84,7 +86,7 @@
 
   /* ---------- buttons ---------- */
   .btn{
-    font-family:'Instrument Sans',sans-serif;font-weight:700;font-size:15px;
+    font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:15px;
     padding:14px 24px;border-radius:999px;border:2px solid var(--green);cursor:pointer;
     transition:transform .16s ease, box-shadow .16s ease, background .16s ease, color .16s ease;
     display:inline-flex;align-items:center;gap:9px;white-space:nowrap;position:relative;overflow:hidden;
@@ -98,7 +100,7 @@
   .btn-primary:hover{transform:translateY(-2px);box-shadow:0 16px 30px -12px rgba(18,64,42,.85);}
   .btn-primary:hover svg{transform:translateX(3px);}
   .btn-ghost{background:transparent;color:var(--ink);border-color:var(--ink);}
-  .btn-ghost:hover{background:var(--ink);color:var(--paper);}
+  .btn-ghost:hover{background:var(--ink);color:var(--bg);}
   .btn-amber{background:var(--amber);border-color:var(--amber);color:var(--dark);box-shadow:0 10px 22px -10px rgba(227,166,58,.7);}
   .btn-amber:hover{transform:translateY(-2px);}
   .btn-sm{padding:10px 18px;font-size:13.5px;}
@@ -122,7 +124,8 @@
   h1 .hl svg path{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1s ease .7s forwards;}
   @keyframes draw{to{stroke-dashoffset:0;}}
   .wm{display:inline-block;overflow:hidden;vertical-align:bottom;padding:0 .04em .08em;}
-  .w{display:inline-block;transform:translateY(115%);transition:transform .9s cubic-bezier(.16,1,.3,1);transition-delay:var(--d,0s);}
+  .w{display:inline-block;transition:transform .9s cubic-bezier(.16,1,.3,1);transition-delay:var(--d,0s);}
+  .js .w{transform:translateY(115%);}
   .words-in .w{transform:translateY(0);}
   .lede{font-size:clamp(16.5px,1.6vw,18.5px);color:var(--soft);max-width:520px;margin-bottom:24px;}
   .lede strong{color:var(--ink);}
@@ -137,7 +140,7 @@
   .tool-field label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);padding-left:4px;}
   .tool-field input{
     width:100%;padding:13px 14px;border:1.5px solid var(--line);border-radius:11px;
-    font-family:'Instrument Sans',sans-serif;font-size:15px;background:var(--paper);color:var(--ink);transition:border-color .15s, box-shadow .15s;
+    font-family:'Bricolage Grotesque',sans-serif;font-size:15px;background:var(--bg);color:var(--ink);transition:border-color .15s, box-shadow .15s;
   }
   .tool-field input:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 4px rgba(30,92,60,.14);}
   .tool .btn{width:100%;justify-content:center;margin-top:11px;}
@@ -225,7 +228,7 @@
   .snapcard.live .sc-cap{color:var(--green-deep);font-weight:600;}
   .device-badge{
     position:absolute;z-index:6;top:64px;right:-16px;
-    background:var(--dark);color:var(--paper);font-size:10px;font-weight:800;
+    background:var(--dark);color:var(--bg);font-size:10px;font-weight:800;
     letter-spacing:.05em;text-transform:uppercase;padding:7px 11px;border-radius:9px;
     box-shadow:0 14px 26px -12px rgba(0,0,0,.6);transform:rotate(4deg);
     display:flex;align-items:center;gap:6px;animation:badgebob 4.5s ease-in-out infinite;
@@ -234,7 +237,7 @@
   .device-badge .live-dot{width:7px;height:7px;border-radius:50%;background:var(--amber);}
 
   /* ---------- marquee ---------- */
-  .marquee{margin-top:34px;background:var(--dark);color:var(--paper);overflow:hidden;
+  .marquee{margin-top:34px;background:var(--dark);color:var(--bg);overflow:hidden;
     -webkit-mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent);
     mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent);}
   .marquee-track{display:inline-flex;align-items:center;gap:34px;padding:15px 17px;white-space:nowrap;animation:scrollx 38s linear infinite;}
@@ -251,10 +254,10 @@
   .sec-head{max-width:640px;margin-bottom:44px;}
   .sec-head p{color:var(--soft);font-size:17px;margin-top:14px;}
 
-  .reveal{opacity:0;transform:translateY(30px);filter:blur(10px);
+  .js .reveal{opacity:0;transform:translateY(30px);filter:blur(10px);
     transition:opacity .85s cubic-bezier(.22,1,.36,1), transform .9s cubic-bezier(.22,1,.36,1), filter .85s ease;}
   .reveal.in{opacity:1;transform:none;filter:blur(0);}
-  .reveal[data-stagger]>*{opacity:0;transform:translateY(26px);filter:blur(8px);
+  .js .reveal[data-stagger]>*{opacity:0;transform:translateY(26px);filter:blur(8px);
     transition:opacity .75s cubic-bezier(.22,1,.36,1), transform .8s cubic-bezier(.22,1,.36,1), filter .75s ease;}
   .reveal[data-stagger].in>*{opacity:1;transform:none;filter:blur(0);}
 
@@ -312,7 +315,7 @@
 
   /* ---------- stats ---------- */
   .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:18px;overflow:hidden;}
-  .stat{background:var(--paper);padding:28px 20px;text-align:center;}
+  .stat{background:var(--bg);padding:28px 20px;text-align:center;}
   .stat .num{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(30px,4vw,46px);line-height:1;color:var(--green);letter-spacing:-0.02em;}
   .stat .lab{font-size:13px;color:var(--soft);margin-top:9px;font-weight:600;}
 
@@ -323,7 +326,7 @@
     transition:transform .2s ease, box-shadow .2s ease;
   }
   .step:hover{transform:translateY(-4px);box-shadow:var(--shadow);}
-  .step .sn{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:44px;color:var(--paper-2);line-height:.8;position:absolute;top:20px;right:22px;}
+  .step .sn{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:44px;color:var(--surface);line-height:.8;position:absolute;top:20px;right:22px;}
   .step .si{width:46px;height:46px;border-radius:13px;background:rgba(30,92,60,.1);color:var(--green);display:flex;align-items:center;justify-content:center;margin-bottom:18px;}
   .step h4{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:20px;margin-bottom:8px;}
   .step p{font-size:14.5px;color:var(--soft);}
@@ -352,7 +355,7 @@
   .fit-title{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:20px;margin-bottom:16px;display:flex;align-items:center;gap:10px;}
   .fit-title .ic{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
   .fit-yes .ic{background:rgba(30,92,60,.1);color:var(--green);}
-  .fit-no .ic{background:var(--paper-2);color:var(--muted);}
+  .fit-no .ic{background:var(--surface);color:var(--muted);}
   .fit-list{list-style:none;}
   .fit-list li{font-size:14.5px;padding:9px 0 9px 28px;position:relative;line-height:1.45;border-bottom:1px solid var(--line);}
   .fit-list li:last-child{border-bottom:none;}
@@ -365,7 +368,7 @@
   .about-media{position:relative;display:flex;justify-content:center;}
   .about-frame{
     position:relative;width:min(300px,100%);border-radius:24px;padding:14px;
-    background:linear-gradient(165deg,#fff,var(--paper-2));border:1px solid var(--line);box-shadow:var(--shadow);
+    background:linear-gradient(165deg,#fff,var(--surface));border:1px solid var(--line);box-shadow:var(--shadow);
     transform:rotate(-2deg);
   }
   .about-frame img{width:100%;border-radius:14px;aspect-ratio:1;object-fit:cover;}
@@ -375,7 +378,7 @@
   }
   .about-stamp{
     position:absolute;right:-16px;bottom:34px;width:88px;height:88px;border-radius:50%;
-    background:var(--green);color:var(--paper);display:flex;align-items:center;justify-content:center;
+    background:var(--green);color:var(--bg);display:flex;align-items:center;justify-content:center;
     text-align:center;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;line-height:1.35;
     transform:rotate(8deg);box-shadow:0 16px 30px -14px rgba(15,35,26,.6);padding:10px;
   }
@@ -470,6 +473,9 @@
     .w{transform:none;}
     html{scroll-behavior:auto;}
   }
+  h1,h2,h3,h4{text-wrap:balance;}
+  p{text-wrap:pretty;}
+  .faq-a,.about-text p,.sec-head p{max-width:66ch;}
   :focus-visible{outline:3px solid var(--green);outline-offset:3px;border-radius:4px;}
 </style>
 </head>
@@ -629,7 +635,6 @@
 <div class="wrap">
   <section id="services">
     <div class="sec-head reveal">
-      <div class="eyebrow">What I offer</div>
       <h2 class="display">Three ways in. Start free.</h2>
       <p>Every business is different, so this works as a ladder — see where you stand for nothing, get a plan for £75, or have the whole thing built for you.</p>
     </div>
@@ -708,7 +713,6 @@
 <div class="wrap">
   <section id="how" style="padding-top:0;">
     <div class="sec-head reveal">
-      <div class="eyebrow">How it works</div>
       <h2 class="display">No app, no login, no faff.</h2>
       <p>Three steps. A real person does the work in between — you just say hello and read the result.</p>
     </div>
@@ -739,7 +743,6 @@
 <section class="band" aria-label="Made in mid Wales">
   <div class="sun" aria-hidden="true"></div>
   <div class="band-inner reveal">
-    <div class="eyebrow">Mid Wales · home turf</div>
     <h2 class="display">Made here, for here.</h2>
     <p>VisibleLocal is run from mid Wales, for the businesses that make mid Wales worth visiting. Not a faceless agency three counties away — someone who knows the patch.</p>
   </div>
@@ -756,7 +759,6 @@
 <div class="wrap">
   <section>
     <div class="sec-head reveal">
-      <div class="eyebrow">Is this you?</div>
       <h2 class="display">Who this is actually for.</h2>
     </div>
     <div class="fit-grid">
@@ -793,7 +795,6 @@
         </div>
       </div>
       <div class="about-text reveal" style="transition-delay:.08s">
-        <div class="eyebrow">Who's behind this</div>
         <h2 class="display">A real person, not a faceless agency.</h2>
         <p><strong>Hi — I'm Dylan.</strong> I grew up here in mid Wales, and in September I'm off to Cardiff University to study Politics and Economics. VisibleLocal is what I'm building in the meantime — partly to sharpen my own skills in business and marketing, and partly because the towns I grew up around are full of brilliant businesses that deserve to be found online.</p>
         <p>I'm not a big agency, and I won't pretend to be one. What I am is local, careful, and honest about how I work: <strong>I use AI openly</strong> to do the heavy research — reading through your reviews, your competitors, and how Google, Facebook and Tripadvisor actually rank local businesses — and then I turn all of that into things you can actually use.</p>
@@ -808,7 +809,6 @@
 <div class="wrap">
   <section id="faq">
     <div class="sec-head reveal">
-      <div class="eyebrow">Before you ask</div>
       <h2 class="display">Quick questions, answered.</h2>
     </div>
     <div class="faq-list reveal">
@@ -857,7 +857,6 @@
 <div class="wrap">
   <section id="contact" style="padding-top:0;">
     <div class="cta-panel reveal">
-      <div class="eyebrow">Ready when you are</div>
       <h2 class="display">Let's see where you stand.</h2>
       <p>Start with the free snapshot — or just ring me and tell me about your business. Either way, you'll know more in five minutes than you do now.</p>
       <div class="cta-row">
@@ -1013,6 +1012,8 @@
       el.addEventListener('pointerleave', function(){ el.style.transform = ''; });
     });
   }
+  // Failsafe: if the observer never fires (headless renderer, odd browser), reveal everything.
+  setTimeout(function(){ document.querySelectorAll('.reveal:not(.in)').forEach(function(el){ el.classList.add('in'); }); }, 2600);
 })();
 </script>
 
